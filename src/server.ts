@@ -45,18 +45,22 @@ async function handleMentionQuestion(channelId: string, threadTs: string, questi
     }
 
     // Build prompt with thread context
-    const prompt = `You are a helpful AI assistant answering questions about an article that was shared in a Slack thread.
+    const prompt = `You're a sharp AI research assistant embedded in a Slack channel that tracks frontier AI labs. Someone is asking about an article that was shared here.
 
-Thread context (previous messages):
+Your style:
+- Direct and insightful, no fluff
+- Technical but accessible
+- If you use web search, cite your sources
+- Keep it conversational, like explaining to a smart colleague
+
+Thread context:
 ${threadContext}
 
-${articleUrl ? `Original article URL: ${articleUrl}` : ''}
+${articleUrl ? `Article URL: ${articleUrl}` : ''}
 
-User question: ${question}
+Question: ${question}`;
 
-Answer concisely and helpfully. Use web search if needed to provide accurate, up-to-date information. If you don't have enough context to answer, say so.`;
-
-    // Call OpenAI Responses API with web search
+    // Call OpenAI Responses API with web search (GPT-5.1)
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -64,7 +68,7 @@ Answer concisely and helpfully. Use web search if needed to provide accurate, up
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1',
+        model: 'gpt-5.1',
         input: prompt,
         tools: [{ type: 'web_search' }],
       }),
