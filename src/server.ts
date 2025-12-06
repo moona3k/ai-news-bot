@@ -377,17 +377,45 @@ const server = Bun.serve({
       const url_clean = parts[0];
       const contentType: ContentType = parts[1] === 'announcement' ? 'announcement' : 'technical';
 
-      // Post public "Thinking..." message, then process in background
+      // Post public "Thinking..." message with animated dots
       const client = getSlackClient();
       let processingTs: string | undefined;
+      let dotCount = 1;
+      let animationInterval: ReturnType<typeof setInterval> | undefined;
+
+      const startDotAnimation = () => {
+        animationInterval = setInterval(async () => {
+          if (!processingTs) return;
+          dotCount = (dotCount % 3) + 1;
+          const dots = '.'.repeat(dotCount);
+          try {
+            await client.chat.update({
+              channel: payload.channel_id,
+              ts: processingTs,
+              text: `:thinking_party: Thinking${dots}`,
+            });
+          } catch {
+            // Ignore update errors (message may have been replaced)
+          }
+        }, 1500);
+      };
+
+      const stopDotAnimation = () => {
+        if (animationInterval) {
+          clearInterval(animationInterval);
+          animationInterval = undefined;
+        }
+      };
 
       client.chat.postMessage({
         channel: payload.channel_id,
-        text: ':thinking_party: Thinking...',
+        text: ':thinking_party: Thinking.',
       }).then((thinkingMsg) => {
         processingTs = thinkingMsg.ts;
+        startDotAnimation();
         return processManualUrl(url_clean, contentType, payload.channel_id, processingTs);
       }).then(async (result) => {
+        stopDotAnimation();
         if (!result.success && processingTs) {
           // Update "Thinking..." with error
           await client.chat.update({
@@ -397,6 +425,7 @@ const server = Bun.serve({
           });
         }
       }).catch(async (error) => {
+        stopDotAnimation();
         if (processingTs) {
           await client.chat.update({
             channel: payload.channel_id,
