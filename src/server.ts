@@ -120,6 +120,12 @@ const server = Bun.serve({
       const slackUrlMatch = articleUrl.match(/<([^|>]+)(?:\|[^>]+)?>/);
       if (slackUrlMatch) {
         articleUrl = slackUrlMatch[1];
+      } else {
+        // Extract URL from anywhere in the text (e.g. "pls process https://example.com")
+        const urlMatch = articleUrl.match(/https?:\/\/[^\s]+/);
+        if (urlMatch) {
+          articleUrl = urlMatch[0];
+        }
       }
 
       // Validate URL
