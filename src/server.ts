@@ -102,6 +102,28 @@ const server = Bun.serve({
       });
     }
 
+    // Slack Events API endpoint (for @mentions)
+    if (url.pathname === '/slack/events' && req.method === 'POST') {
+      const body = await req.text();
+      const payload = JSON.parse(body);
+
+      // Handle URL verification challenge
+      if (payload.type === 'url_verification') {
+        return new Response(JSON.stringify({ challenge: payload.challenge }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Handle app_mention events (will implement full handler later)
+      if (payload.event?.type === 'app_mention') {
+        console.log('App mention received:', payload.event);
+        // TODO: Implement thread Q&A
+      }
+
+      return new Response('OK', { status: 200 });
+    }
+
     // Slack slash command endpoint
     if ((url.pathname === '/slack' || url.pathname === '/slack/commands') && req.method === 'POST') {
       const body = await req.text();
