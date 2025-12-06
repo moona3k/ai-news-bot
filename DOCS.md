@@ -2,10 +2,17 @@
 
 > Last updated: 2025-12-05
 > Status: Production ready
+> Slack channel: `#agi-pulse`
+
+## The Concept: AGI Pulse
+
+We're not at AGI yet, but we're watching the frontier labs for signals. Every blog post, every research paper, every product announcement is a data point - a pulse check on how close we're getting.
+
+By monitoring Anthropic, OpenAI, DeepMind, Meta, and other frontier labs, we get a real-time feed of progress. The channel name `#agi-pulse` captures this: it's a health check on the state of AI, delivered through the labs' own words.
 
 ## Project Overview
 
-**Goal**: Slack bot that monitors AI frontier lab blogs, generates LLM-powered summaries, and posts them to a company Slack channel.
+**Goal**: Slack bot that monitors AI frontier lab blogs, generates LLM-powered summaries, and posts them to `#agi-pulse`.
 
 **Key Features**:
 - Monitor 13 blog sources (Anthropic, OpenAI, DeepMind, Cursor, Simon Willison, Thinking Machines, Reflection AI, Cognition, Allen AI, Meta)
