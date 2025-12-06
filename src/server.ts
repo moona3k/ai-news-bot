@@ -395,7 +395,7 @@ const server = Bun.serve({
 
       client.chat.postMessage({
         channel: payload.channel_id,
-        text: `:thinking_party: Processing <${url_clean}|${new URL(url_clean).hostname}>...`,
+        text: ':thinking_party: Thinking...',
       }).then((thinkingMsg) => {
         processingTs = thinkingMsg.ts;
         return processManualUrl(url_clean, contentType, payload.channel_id, processingTs);
