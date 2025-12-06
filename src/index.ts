@@ -27,9 +27,10 @@ async function generateAndPostCartoon(
   threadTs: string,
   channelId?: string
 ): Promise<void> {
-  const cartoon = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
-  if (cartoon) {
-    await postImageReply(cartoon, threadTs, channelId, '🎨 _4-panel cartoon_');
+  const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
+  if (result) {
+    const caption = `🎨 ${result.caption}`;
+    await postImageReply(result.image, threadTs, channelId, caption);
   }
 }
 

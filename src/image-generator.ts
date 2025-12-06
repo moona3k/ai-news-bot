@@ -15,6 +15,7 @@ Your script must follow this EXACT format:
 
 STYLE: [One of: "xkcd minimalist" | "the oatmeal" | "dilbert office" | "calvin and hobbes"]
 CHARACTER: [Brief consistent character description, e.g., "A stick figure programmer with spiky hair and glasses"]
+CAPTION: [One witty, conversational sentence that explains the cartoon's point - like you're telling a friend "basically, ..."]
 
 PANEL 1 (Setup): [Detailed visual scene description - establish the situation]
 PANEL 2 (Problem): [Detailed visual scene description - introduce tension or confusion]
@@ -22,6 +23,7 @@ PANEL 3 (Realization): [Detailed visual scene description - the "aha" moment]
 PANEL 4 (Punchline): [Detailed visual scene description - the insight or funny conclusion]
 
 Guidelines:
+- The CAPTION should be light, witty, and help someone "get" the cartoon if they're confused
 - Each panel description should be 1-2 sentences, visually specific
 - Focus on ONE key insight from the article - don't try to explain everything
 - Make it clever, witty, or thought-provoking
@@ -35,6 +37,7 @@ If you need to search for additional context about the topic, you may do so.`;
 interface CartoonScript {
   style: string;
   character: string;
+  caption: string;
   panels: string[];
   raw: string;
 }
@@ -46,6 +49,7 @@ function parseScript(raw: string): CartoonScript | null {
   try {
     const styleMatch = raw.match(/STYLE:\s*(.+)/i);
     const characterMatch = raw.match(/CHARACTER:\s*(.+)/i);
+    const captionMatch = raw.match(/CAPTION:\s*(.+)/i);
     const panel1Match = raw.match(/PANEL 1[^:]*:\s*(.+?)(?=PANEL 2|$)/is);
     const panel2Match = raw.match(/PANEL 2[^:]*:\s*(.+?)(?=PANEL 3|$)/is);
     const panel3Match = raw.match(/PANEL 3[^:]*:\s*(.+?)(?=PANEL 4|$)/is);
@@ -59,6 +63,7 @@ function parseScript(raw: string): CartoonScript | null {
     return {
       style: styleMatch[1].trim(),
       character: characterMatch[1].trim(),
+      caption: captionMatch ? captionMatch[1].trim() : '',
       panels: [
         panel1Match[1].trim(),
         panel2Match[1].trim(),
@@ -210,19 +215,24 @@ async function generateImageFromScript(script: CartoonScript): Promise<string | 
 // Main Export: 2-Step Pipeline
 // ============================================================
 
+export interface CartoonResult {
+  image: string;  // base64-encoded image
+  caption: string;  // witty one-liner explanation
+}
+
 /**
  * Generate a 4-panel cartoon using 2-step pipeline:
- * 1. LLM generates structured script
+ * 1. LLM generates structured script (with caption)
  * 2. Image model executes the script
  *
- * Returns base64-encoded image data, or null if generation fails
+ * Returns image + caption, or null if generation fails
  */
 export async function generateArticleCartoon(
   haiku: string,
   articleTitle: string,
   articleExcerpt: string,
   contentType: ContentType
-): Promise<string | null> {
+): Promise<CartoonResult | null> {
   // Step 1: Generate script
   const script = await generateCartoonScript(haiku, articleTitle, articleExcerpt, contentType);
 
@@ -234,7 +244,14 @@ export async function generateArticleCartoon(
   // Step 2: Generate image from script
   const image = await generateImageFromScript(script);
 
-  return image;
+  if (!image) {
+    return null;
+  }
+
+  return {
+    image,
+    caption: script.caption || 'Here\'s a cartoon for you',
+  };
 }
 
 /**
