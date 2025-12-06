@@ -115,6 +115,55 @@ The two-step approach offloads cognitive/creative work to the language model, wh
 
 **Insight:** This follows an emerging agent architecture pattern - decompose complex tasks into specialized steps rather than asking one model to do everything. Agent best practices are still maturing, but task decomposition is proving valuable.
 
+### 2-Step Cartoon Pipeline Implementation (2024-12-06)
+
+**Implemented the two-step approach:**
+
+```
+Article + Haiku
+      ↓
+┌─────────────────────────────────┐
+│ Step 1: SCRIPT GENERATOR        │
+│ (Responses API + web_search)    │
+│                                 │
+│ Output: Structured script       │
+│ - STYLE: xkcd/oatmeal/etc      │
+│ - CHARACTER: description        │
+│ - PANEL 1-4: scene descriptions │
+└─────────────────────────────────┘
+      ↓
+┌─────────────────────────────────┐
+│ Step 2: IMAGE GENERATOR         │
+│ (gpt-image-1)                   │
+│                                 │
+│ Just executes the script        │
+│ No interpretation               │
+└─────────────────────────────────┘
+      ↓
+   4-panel cartoon
+```
+
+**Why this works better:**
+- LLM excels at creative/narrative work (choosing insight, writing story arc)
+- Image model excels at visual execution (doesn't have to "think")
+- Strict format ensures consistent, parseable output
+- Web search available if Step 1 needs more context
+
+**Script format:**
+```
+STYLE: [xkcd minimalist | the oatmeal | dilbert office | calvin and hobbes]
+CHARACTER: [consistent character description]
+
+PANEL 1 (Setup): [scene description]
+PANEL 2 (Problem): [scene description]
+PANEL 3 (Realization): [scene description]
+PANEL 4 (Punchline): [scene description]
+```
+
+Sources:
+- https://7labs.io/article/create-comic-strips-ai.html
+- https://www.analyticsvidhya.com/blog/2025/09/build-comic-generator-using-openai-gemini/
+
 #### 2. URL-only vs URL + Pre-extracted Text
 **Question:** When using Responses API, is it better to provide:
 - (A) Just the URL, or
