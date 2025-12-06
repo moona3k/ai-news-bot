@@ -1,0 +1,29 @@
+{
+  "name": "ai-signals",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "test": "bun test",
+    "test:llm": "bun run src/test-llm.ts",
+    "test:summary": "bun run src/test-summary.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.53",
+    "@ai-sdk/openai": "^2.0.77",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.59",
+    "@mozilla/readability": "^0.6.0",
+    "@slack/web-api": "^7.13.0",
+    "ai": "^5.0.107",
+    "cheerio": "^1.1.2",
+    "linkedom": "^0.18.12"
+  }
+}
