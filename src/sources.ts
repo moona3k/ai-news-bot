@@ -77,6 +77,13 @@ export const SOURCES: Source[] = [
     baseUrl: 'https://cognition.ai',
     contentType: 'technical',
   },
+  {
+    name: 'Allen AI',
+    indexUrl: 'https://allenai.org/blog',
+    articleSelector: 'a[href^="/blog/"]:not([href="/blog/"])',
+    baseUrl: 'https://allenai.org',
+    contentType: 'technical',
+  },
 
   // Announcement sources (Hype-Aware Analysis)
   {
