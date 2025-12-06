@@ -225,9 +225,9 @@ export async function processManualUrl(
       return { success: false, message: 'Failed to post to Slack' };
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Error processing ${url}:`, message);
-    return { success: false, message };
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(`Error processing ${url}:`, detail);
+    return { success: false, message: `Failed to fetch article: ${detail}` };
   }
 }
 
