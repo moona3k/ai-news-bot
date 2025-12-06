@@ -7,6 +7,17 @@ import { getConfig, loadConfig } from './config';
 import { runScrapeCheck, processManualUrl } from './index';
 import type { ContentType } from './sources';
 
+/**
+ * Convert markdown to Slack mrkdwn format
+ */
+function toSlackMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,3}\s+(.+)$/gm, '*$1*')       // ## Header → *Header* (bold)
+    .replace(/\*\*(.+?)\*\*/g, '*$1*')           // **bold** → *bold*
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<$2|$1>') // [text](url) → <url|text>
+    .replace(/^• /gm, '• ');                     // keep bullets as-is
+}
+
 let _slackClient: WebClient | null = null;
 function getSlackClient(): WebClient {
   if (!_slackClient) {
@@ -47,11 +58,12 @@ async function handleMentionQuestion(channelId: string, threadTs: string, questi
     // Build prompt with thread context
     const prompt = `You're a sharp AI research assistant embedded in a Slack channel that tracks frontier AI labs. Someone is asking about an article that was shared here.
 
-Your style:
-- Direct and insightful, no fluff
-- Technical but accessible
-- If you use web search, cite your sources
-- Keep it conversational, like explaining to a smart colleague
+Your response will be posted to Slack, so:
+- Direct and concise - aim for 2-4 short paragraphs max
+- Use Slack formatting: *bold* for emphasis, no markdown headers (no # or ##)
+- Bullet points are fine, but keep them brief
+- If you use web search, cite sources inline as plain URLs
+- Conversational, like explaining to a smart colleague
 
 Thread context:
 ${threadContext}
@@ -99,11 +111,12 @@ Question: ${question}`;
       answer = 'Sorry, I could not generate a response.';
     }
 
-    // Post reply in thread
+    // Convert to Slack formatting and post reply in thread
+    const slackAnswer = toSlackMarkdown(answer);
     await client.chat.postMessage({
       channel: channelId,
       thread_ts: threadTs,
-      text: answer,
+      text: slackAnswer,
     });
 
   } catch (error) {
