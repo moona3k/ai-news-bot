@@ -7,7 +7,7 @@ import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, 
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
-import { postArticleThread, sendMessage, postImageReply } from './slack';
+import { postArticleThread, sendMessage, postImageReply, postCartoonError } from './slack';
 import { generateArticleCartoon, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
@@ -28,9 +28,13 @@ async function generateAndPostCartoon(
   channelId?: string
 ): Promise<void> {
   const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
-  if (result) {
+
+  if (result.success) {
     const caption = `🎨 *_${result.caption}_* 🎨`;
     await postImageReply(result.image, threadTs, channelId, caption);
+  } else {
+    // Post error notification to thread
+    await postCartoonError(result.error, result.prompt, threadTs, channelId);
   }
 }
 

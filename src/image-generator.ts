@@ -212,10 +212,15 @@ Requirements:
 - Draw EXACTLY what is described - no interpretation`;
 }
 
+export interface ImageGenerationError {
+  error: string;
+  prompt: string;
+}
+
 /**
  * Step 2: Generate image from script using gpt-image-1
  */
-async function generateImageFromScript(script: CartoonScript): Promise<string | null> {
+async function generateImageFromScript(script: CartoonScript): Promise<{ image: string } | { error: ImageGenerationError }> {
   const prompt = buildImagePrompt(script);
 
   console.log(`    Step 2: Generating image from script...`);
@@ -232,14 +237,15 @@ async function generateImageFromScript(script: CartoonScript): Promise<string | 
 
     if (!imageBase64) {
       console.log('    Image generation returned no data');
-      return null;
+      return { error: { error: 'No image data returned', prompt } };
     }
 
     console.log('    Image generated successfully');
-    return imageBase64;
-  } catch (error) {
-    console.error('    Image generation failed:', error);
-    return null;
+    return { image: imageBase64 };
+  } catch (err: any) {
+    const errorMessage = err?.error?.message || err?.message || String(err);
+    console.error('    Image generation failed:', errorMessage);
+    return { error: { error: errorMessage, prompt } };
   }
 }
 
@@ -248,8 +254,15 @@ async function generateImageFromScript(script: CartoonScript): Promise<string | 
 // ============================================================
 
 export interface CartoonResult {
+  success: true;
   image: string;  // base64-encoded image
   caption: string;  // witty one-liner explanation
+}
+
+export interface CartoonError {
+  success: false;
+  error: string;
+  prompt?: string;
 }
 
 /**
@@ -257,31 +270,36 @@ export interface CartoonResult {
  * 1. LLM generates structured script (with caption)
  * 2. Image model executes the script
  *
- * Returns image + caption, or null if generation fails
+ * Returns image + caption on success, or error details on failure
  */
 export async function generateArticleCartoon(
   haiku: string,
   articleTitle: string,
   articleExcerpt: string,
   contentType: ContentType
-): Promise<CartoonResult | null> {
+): Promise<CartoonResult | CartoonError> {
   // Step 1: Generate script
   const script = await generateCartoonScript(haiku, articleTitle, articleExcerpt, contentType);
 
   if (!script) {
     console.log('    Cartoon generation failed at script step');
-    return null;
+    return { success: false, error: 'Failed to generate cartoon script' };
   }
 
   // Step 2: Generate image from script
-  const image = await generateImageFromScript(script);
+  const result = await generateImageFromScript(script);
 
-  if (!image) {
-    return null;
+  if ('error' in result) {
+    return {
+      success: false,
+      error: result.error.error,
+      prompt: result.error.prompt,
+    };
   }
 
   return {
-    image,
+    success: true,
+    image: result.image,
     caption: script.caption || 'Here\'s a cartoon for you',
   };
 }

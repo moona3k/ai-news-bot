@@ -201,6 +201,35 @@ export async function sendMessage(text: string): Promise<void> {
 }
 
 /**
+ * Post cartoon generation error to thread (for debugging)
+ */
+export async function postCartoonError(
+  error: string,
+  prompt: string | undefined,
+  threadTs: string,
+  channelId?: string
+): Promise<void> {
+  const client = getClient();
+  const config = getConfig();
+  const channel = channelId || config.slackChannelId;
+
+  try {
+    const promptBlock = prompt
+      ? `\n\n*Prompt used:*\n\`\`\`${prompt.slice(0, 2900)}\`\`\``
+      : '';
+
+    await client.chat.postMessage({
+      channel,
+      thread_ts: threadTs,
+      text: `⚠️ *Cartoon generation failed*\n\n*Error:* ${error}${promptBlock}`,
+    });
+    console.log('    Posted cartoon error to thread');
+  } catch (err) {
+    console.error('Failed to post cartoon error:', err);
+  }
+}
+
+/**
  * Post an image as a thread reply (3rd reply with generated image)
  * @param imageBase64 - Base64-encoded image data
  * @param threadTs - Thread timestamp to reply to
