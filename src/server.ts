@@ -61,10 +61,10 @@ ${articleUrl ? `Article URL: ${articleUrl}` : ''}
 Question: ${question}`;
 
     // Call OpenAI Responses API with web search (GPT-5.1)
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    const response = await fetch('https://us.api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
