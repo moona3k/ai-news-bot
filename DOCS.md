@@ -365,8 +365,8 @@ That's it - tracing is automatic when the key is set.
 ### How It Works
 
 All LLM calls go through a shared OpenAI client (`src/openai.ts`) wrapped with Braintrust's `wrapOpenAI()`. This auto-traces:
-- `openai.chat.completions.create()` - summaries (GPT-5.1)
-- `openai.responses.create()` - research + @mentions (GPT-4o/5.1 with web search)
+- `openai.chat.completions.create()` - summaries (`gpt-5.1-chat-latest`)
+- `openai.responses.create()` - research + @mentions (`gpt-5.1-chat-latest` with `web_search` tool)
 
 When `BRAINTRUST_API_KEY` is not set, the wrapper is a no-op and everything works normally.
 
