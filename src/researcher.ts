@@ -1,6 +1,7 @@
 // Researcher module - agentic research using OpenAI Responses API
-// Uses built-in web_search tool for research
+// Uses shared OpenAI client with Braintrust tracing
 
+import { openai } from './openai';
 import type { ContentType } from './sources';
 
 const RESEARCH_PROMPTS = {
@@ -27,6 +28,25 @@ Dig deep - follow your own threads, verify claims, chase interesting angles. Kee
 };
 
 /**
+ * Extract text content from Responses API output
+ */
+function extractResponseText(response: any): string {
+  let result = '';
+  if (response.output) {
+    for (const item of response.output) {
+      if (item.type === 'message' && item.content) {
+        for (const content of item.content) {
+          if (content.type === 'output_text') {
+            result += content.text;
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * Run agentic research using OpenAI Responses API with web search
  */
 export async function runAgenticResearch(
@@ -48,43 +68,17 @@ ${articleContent.slice(0, 5000)}
 Search the web for context and provide your research findings:`;
 
   try {
-    const response = await fetch('https://us.api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        input: fullPrompt,
-        tools: [{ type: 'web_search' }],
-      }),
+    const response = await openai.responses.create({
+      model: 'gpt-4o',
+      input: fullPrompt,
+      tools: [{ type: 'web_search' }],
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`OpenAI Responses API error ${response.status}: ${err}`);
-    }
+    const result = extractResponseText(response);
 
-    const data = await response.json();
-
-    // Extract text from response output
-    let result = '';
-    if (data.output) {
-      for (const item of data.output) {
-        if (item.type === 'message' && item.content) {
-          for (const content of item.content) {
-            if (content.type === 'output_text') {
-              result += content.text;
-            }
-          }
-        }
-      }
-    }
-
-    // Log metadata if available
-    if (data.usage) {
-      console.log(`  Research completed (${data.usage.total_tokens} tokens)`);
+    // Log token usage if available
+    if (response.usage) {
+      console.log(`  Research completed (${response.usage.total_tokens} tokens)`);
     }
 
     return result || 'Research could not be completed.';
@@ -117,25 +111,12 @@ Article Content (excerpt):
 ${articleContent.slice(0, 5000)}`;
 
   try {
-    const response = await fetch('https://us.api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: fullPrompt }],
-      }),
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: fullPrompt }],
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`OpenAI error ${response.status}: ${err}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content || 'Research context could not be generated.';
+    return completion.choices[0]?.message?.content || 'Research context could not be generated.';
   } catch (error) {
     console.error('Simple research failed:', error);
     return `*Research unavailable* - Could not generate context for "${articleTitle}".`;

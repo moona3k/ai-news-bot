@@ -1,28 +1,8 @@
 // Summarizer module - generates summaries using OpenAI GPT-5.1
+// Uses shared OpenAI client with Braintrust tracing
+
+import { openai } from './openai';
 import type { ContentType } from './sources';
-
-// Direct OpenAI chat completions call (SDK uses wrong endpoint)
-async function callGPT(prompt: string): Promise<string> {
-  const res = await fetch('https://us.api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-5.1-chat-latest',
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenAI error ${res.status}: ${err}`);
-  }
-
-  const data = await res.json();
-  return data.choices[0].message.content;
-}
 
 export interface SummaryOutputs {
   mainSummary: string;
@@ -77,7 +57,7 @@ Format your response EXACTLY like this (use --- as separator):
 
 /**
  * Generate all summaries for an article (single GPT call)
- * Returns { mainSummary: "haiku + one-liner", eli5: "eli5 text" }
+ * Returns { mainSummary: "haiku + one-liner", secondaryAnalysis: "eli5 text" }
  */
 export async function generateSummaries(
   content: string,
@@ -87,12 +67,23 @@ export async function generateSummaries(
   const prompt = contentType === 'technical' ? PROMPTS.technical : PROMPTS.announcement;
 
   console.log(`  Generating haiku + take + ELI5...`);
-  const response = await callGPT(`${prompt}
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-5.1-chat-latest',
+    messages: [
+      {
+        role: 'user',
+        content: `${prompt}
 
 Article Title: ${title}
 
 Article Content:
-${content.slice(0, 15000)}`);
+${content.slice(0, 15000)}`,
+      },
+    ],
+  });
+
+  const response = completion.choices[0]?.message?.content || '';
 
   // Parse response: split by ---
   const parts = response.split('---').map(p => p.trim());

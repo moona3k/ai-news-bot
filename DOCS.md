@@ -64,6 +64,7 @@ ai-news-bot/
 │   ├── server.ts          # HTTP server (Railway entry point)
 │   ├── index.ts           # Core logic + CLI mode
 │   ├── config.ts          # Environment variables
+│   ├── openai.ts          # Shared OpenAI client + Braintrust tracing
 │   ├── sources.ts         # 14 blog source definitions
 │   ├── state.ts           # Seen articles + alert tracking
 │   ├── scraper.ts         # HTML/RSS fetching + Readability
@@ -338,3 +339,38 @@ The "seen" state only applies to `#ai-latest`. Using `/ai-news` in other channel
 
 ### "Thinking..." UX
 Both `/ai-news` and @mentions show a public `:thinking_party: Thinking...` message that gets updated with the final result. This gives immediate feedback and lets everyone in the channel see the bot is working.
+
+## LLM Observability
+
+Uses [Braintrust](https://www.braintrust.dev/) for LLM observability. When configured, all LLM calls are automatically traced.
+
+### What You Get
+
+- Latency & cost tracking per LLM call
+- Full prompt/response logging for debugging
+- Token usage metrics over time
+- Hierarchical traces: article → summarize + research spans
+
+### Setup
+
+1. Get API key from https://www.braintrust.dev/app/token
+2. Add to environment:
+```
+BRAINTRUST_API_KEY=your_key_here
+BRAINTRUST_PROJECT=ai-news-bot
+```
+
+That's it - tracing is automatic when the key is set.
+
+### How It Works
+
+All LLM calls go through a shared OpenAI client (`src/openai.ts`) wrapped with Braintrust's `wrapOpenAI()`. This auto-traces:
+- `openai.chat.completions.create()` - summaries (GPT-5.1)
+- `openai.responses.create()` - research + @mentions (GPT-4o/5.1 with web search)
+
+When `BRAINTRUST_API_KEY` is not set, the wrapper is a no-op and everything works normally.
+
+### Resources
+
+- [Braintrust TypeScript SDK](https://www.braintrust.dev/docs/reference/sdks/typescript)
+- [Braintrust Logging](https://www.braintrust.dev/docs/guides/logs)

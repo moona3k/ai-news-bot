@@ -5,6 +5,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { WebClient } from '@slack/web-api';
 import { getConfig, loadConfig } from './config';
 import { runScrapeCheck, processManualUrl } from './index';
+import { openai } from './openai';
 import type { ContentType } from './sources';
 
 /**
@@ -86,30 +87,16 @@ ${articleUrl ? `Article URL: ${articleUrl}` : ''}
 Question: ${question}`;
 
     // Call OpenAI Responses API with web search (GPT-5.1)
-    const response = await fetch('https://us.api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5.1',
-        input: prompt,
-        tools: [{ type: 'web_search' }],
-      }),
+    const response = await openai.responses.create({
+      model: 'gpt-5.1',
+      input: prompt,
+      tools: [{ type: 'web_search' }],
     });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`OpenAI Responses API error ${response.status}: ${err}`);
-    }
-
-    const data = await response.json();
 
     // Extract text from response output
     let answer = '';
-    if (data.output) {
-      for (const item of data.output) {
+    if (response.output) {
+      for (const item of response.output) {
         if (item.type === 'message' && item.content) {
           for (const content of item.content) {
             if (content.type === 'output_text') {
