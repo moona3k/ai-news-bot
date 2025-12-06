@@ -420,11 +420,13 @@ const server = Bun.serve({
         channel: payload.channel_id,
         text: ':thinking_party: Thinking.',
       }).then((thinkingMsg) => {
+        console.log('Posted Thinking message, starting animation');
         processingTs = thinkingMsg.ts;
         startDotAnimation();
         return processManualUrl(url_clean, contentType, payload.channel_id, processingTs, stopDotAnimation);
       }).then(async (result) => {
-        stopDotAnimation(); // Also stop here in case of early exit
+        console.log('processManualUrl completed:', result.success ? 'success' : result.message);
+        stopDotAnimation();
         if (!result.success && processingTs) {
           // Update "Thinking..." with error
           await client.chat.update({
@@ -434,6 +436,7 @@ const server = Bun.serve({
           });
         }
       }).catch(async (error) => {
+        console.error('Slash command error:', error);
         stopDotAnimation();
         if (processingTs) {
           await client.chat.update({
