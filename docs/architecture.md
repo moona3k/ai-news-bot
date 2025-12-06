@@ -139,3 +139,35 @@ Set `IMAGE_GEN_ENABLED=true` in `.env` to enable cartoon generation.
 If image generation fails (e.g., moderation filter), posts error to thread:
 - Error message from OpenAI
 - The prompt used (in code block for debugging)
+
+## Slack API Rate Limits
+
+Rate limits are **per method, per workspace, per app** - not shared across the workspace.
+
+This means:
+- Our bot has its own rate limit quota, separate from other Slack apps in the company
+- Other bots' activity won't affect ours, and vice versa
+- Essentially free infrastructure for animations/updates
+
+### Tiers
+
+| Tier | Rate | Use Case |
+|------|------|----------|
+| Tier 1 | 1+ per minute | Infrequent access |
+| Tier 2 | 20+ per minute | Most methods (chat.postMessage, chat.update) |
+| Tier 3 | 50+ per minute | Paginating collections |
+| Tier 4 | 100+ per minute | Largest quotas |
+
+### Special Rules
+
+- **Message posting**: Max 1 message per second per channel
+- **429 errors**: Returns `Retry-After` header with seconds to wait
+
+### Our Usage
+
+- "Thinking..." animation: `chat.update` every 2 seconds = 30/min (well under Tier 2 limit)
+- "Drawing comic strip..." animation: same pattern
+
+Sources:
+- https://docs.slack.dev/apis/web-api/rate-limits/
+- https://api.slack.com/apis/rate-limits
