@@ -413,9 +413,9 @@ const server = Bun.serve({
       }).then((thinkingMsg) => {
         processingTs = thinkingMsg.ts;
         startDotAnimation();
-        return processManualUrl(url_clean, contentType, payload.channel_id, processingTs);
+        return processManualUrl(url_clean, contentType, payload.channel_id, processingTs, stopDotAnimation);
       }).then(async (result) => {
-        stopDotAnimation();
+        stopDotAnimation(); // Also stop here in case of early exit
         if (!result.success && processingTs) {
           // Update "Thinking..." with error
           await client.chat.update({

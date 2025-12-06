@@ -7,7 +7,7 @@ import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, 
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
-import { postArticleThread, sendMessage, postImageReply, postCartoonError, postThreadMessage, deleteMessage } from './slack';
+import { postArticleThread, sendMessage, postImageReply, postCartoonError } from './slack';
 import { generateArticleCartoon, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
@@ -178,6 +178,7 @@ async function processSource(source: Source, state: State): Promise<State> {
  * Process a single URL manually (for Slack slash command)
  * @param channelId - Optional channel to post to (defaults to config channel)
  * @param processingTs - Optional ts of a "Processing..." message to update
+ * @param onArticlePosted - Optional callback when main article is posted (before cartoon)
  *
  * Note: Seen state is only checked/updated when posting to the primary channel.
  * Other channels can post the same article multiple times without restriction.
@@ -186,7 +187,8 @@ export async function processManualUrl(
   url: string,
   contentType: ContentType = 'technical',
   channelId?: string,
-  processingTs?: string
+  processingTs?: string,
+  onArticlePosted?: () => void
 ): Promise<{ success: boolean; message: string }> {
   console.log(`\n=== Processing Manual URL ===`);
   console.log(`URL: ${url}`);
@@ -239,6 +241,9 @@ export async function processManualUrl(
     );
 
     if (threadTs) {
+      // Signal that main article is posted (stops "Thinking..." animation)
+      onArticlePosted?.();
+
       // Generate and post 4-panel cartoon if enabled
       if (config.imageGenEnabled) {
         const haiku = extractHaiku(summaries.mainSummary);
