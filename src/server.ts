@@ -385,9 +385,13 @@ const server = Bun.serve({
 
       const startDotAnimation = () => {
         animationInterval = setInterval(async () => {
-          if (!processingTs || !animationInterval) return;
+          if (!processingTs || !animationInterval) {
+            console.log('Animation skip: processingTs or interval missing');
+            return;
+          }
           dotCount = (dotCount % 3) + 1;
           const dots = '.'.repeat(dotCount);
+          console.log(`Animation tick: Thinking${dots}`);
           try {
             await client.chat.update({
               channel: payload.channel_id,
@@ -395,12 +399,12 @@ const server = Bun.serve({
               text: `:thinking_party: Thinking${dots}`,
             });
           } catch (err: any) {
-            // Stop animation if message was deleted/replaced or rate limited
+            console.log('Animation update error:', err?.data?.error || err?.message);
+            // Stop animation if message was deleted/replaced
             if (err?.data?.error === 'message_not_found' || err?.data?.error === 'cant_update_message') {
               clearInterval(animationInterval);
               animationInterval = undefined;
             }
-            // Otherwise ignore and keep trying
           }
         }, 2000);
       };
