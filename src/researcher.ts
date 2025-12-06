@@ -68,7 +68,7 @@ ${articleContent.slice(0, 5000)}
 Search the web for context and provide your research findings:`;
 
   const response = await openai.responses.create({
-    model: 'gpt-5.1',
+    model: 'gpt-5.1-chat-latest',
     input: fullPrompt,
     tools: [{ type: 'web_search' }],
   });

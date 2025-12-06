@@ -86,9 +86,9 @@ ${articleUrl ? `Article URL: ${articleUrl}` : ''}
 
 Question: ${question}`;
 
-    // Call OpenAI Responses API with web search (GPT-5.1)
+    // Call OpenAI Responses API with web search
     const response = await openai.responses.create({
-      model: 'gpt-5.1',
+      model: 'gpt-5.1-chat-latest',
       input: prompt,
       tools: [{ type: 'web_search' }],
     });
