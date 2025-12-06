@@ -139,9 +139,10 @@ Question: ${question}`;
     }
 
   } catch (error) {
-    console.error('Error handling mention:', error);
+    const errorDetail = error instanceof Error ? error.message : String(error);
+    console.error('Error handling mention:', errorDetail);
 
-    const errorText = `Sorry, I encountered an error: ${error}`;
+    const errorText = `Sorry, I encountered an error: ${errorDetail}`;
 
     // Update "Thinking..." with error, or post new if update fails
     if (thinkingTs) {
