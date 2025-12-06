@@ -381,12 +381,13 @@ const server = Bun.serve({
       const client = getSlackClient();
       let processingTs: string | undefined;
       let dotCount = 1;
-      let animationInterval: ReturnType<typeof setInterval> | undefined;
+      let animationInterval: ReturnType<typeof setTimeout> | undefined;
+      let animationStopped = false;
 
       const startDotAnimation = () => {
         const tick = () => {
-          if (!processingTs || !animationInterval) {
-            console.log('Animation stopped: processingTs or interval cleared');
+          if (animationStopped || !processingTs) {
+            console.log('Animation stopped, skipping tick');
             return;
           }
           dotCount = (dotCount % 3) + 1;
@@ -399,8 +400,8 @@ const server = Bun.serve({
           }).catch((err: any) => {
             console.log('Animation update error:', err?.data?.error || err?.message);
           }).finally(() => {
-            // Schedule next tick only if still running
-            if (animationInterval) {
+            // Schedule next tick only if not stopped
+            if (!animationStopped) {
               animationInterval = setTimeout(tick, 2000);
             }
           });
@@ -410,6 +411,7 @@ const server = Bun.serve({
       };
 
       const stopDotAnimation = () => {
+        animationStopped = true;
         if (animationInterval) {
           clearTimeout(animationInterval);
           animationInterval = undefined;
