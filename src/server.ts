@@ -384,34 +384,34 @@ const server = Bun.serve({
       let animationInterval: ReturnType<typeof setInterval> | undefined;
 
       const startDotAnimation = () => {
-        animationInterval = setInterval(async () => {
+        const tick = () => {
           if (!processingTs || !animationInterval) {
-            console.log('Animation skip: processingTs or interval missing');
+            console.log('Animation stopped: processingTs or interval cleared');
             return;
           }
           dotCount = (dotCount % 3) + 1;
           const dots = '.'.repeat(dotCount);
           console.log(`Animation tick: Thinking${dots}`);
-          try {
-            await client.chat.update({
-              channel: payload.channel_id,
-              ts: processingTs,
-              text: `:thinking_party: Thinking${dots}`,
-            });
-          } catch (err: any) {
+          client.chat.update({
+            channel: payload.channel_id,
+            ts: processingTs,
+            text: `:thinking_party: Thinking${dots}`,
+          }).catch((err: any) => {
             console.log('Animation update error:', err?.data?.error || err?.message);
-            // Stop animation if message was deleted/replaced
-            if (err?.data?.error === 'message_not_found' || err?.data?.error === 'cant_update_message') {
-              clearInterval(animationInterval);
-              animationInterval = undefined;
+          }).finally(() => {
+            // Schedule next tick only if still running
+            if (animationInterval) {
+              animationInterval = setTimeout(tick, 2000);
             }
-          }
-        }, 2000);
+          });
+        };
+        // Start first tick after 2s
+        animationInterval = setTimeout(tick, 2000);
       };
 
       const stopDotAnimation = () => {
         if (animationInterval) {
-          clearInterval(animationInterval);
+          clearTimeout(animationInterval);
           animationInterval = undefined;
         }
       };
