@@ -147,10 +147,12 @@ async function processSource(source: Source, state: State): Promise<State> {
 
 /**
  * Process a single URL manually (for Slack slash command)
+ * @param channelId - Optional channel to post to (defaults to config channel)
  */
 export async function processManualUrl(
   url: string,
-  contentType: ContentType = 'technical'
+  contentType: ContentType = 'technical',
+  channelId?: string
 ): Promise<{ success: boolean; message: string }> {
   console.log(`\n=== Processing Manual URL ===`);
   console.log(`URL: ${url}`);
@@ -201,7 +203,8 @@ export async function processManualUrl(
         contentType,
       },
       summaries,
-      researchContext
+      researchContext,
+      channelId
     );
 
     if (threadTs) {

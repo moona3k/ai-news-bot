@@ -133,7 +133,7 @@ const server = Bun.serve({
       const contentType: ContentType = parts[1] === 'announcement' ? 'announcement' : 'technical';
 
       // Respond immediately, process in background
-      processManualUrl(url_clean, contentType)
+      processManualUrl(url_clean, contentType, payload.channel_id)
         .then((result) => {
           sendSlackResponse(payload.response_url,
             result.success ? `✅ ${result.message}` : `❌ ${result.message}`

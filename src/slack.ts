@@ -67,14 +67,17 @@ function formatHaikuSummary(text: string): string {
 
 /**
  * Post an article to Slack with thread replies
+ * @param channelId - Optional channel to post to (defaults to config.slackChannelId)
  */
 export async function postArticleThread(
   article: ArticlePost,
   summaries: SummaryOutputs,
-  researchContext: string
+  researchContext: string,
+  channelId?: string
 ): Promise<string | null> {
   const client = getClient();
   const config = getConfig();
+  const channel = channelId || config.slackChannelId;
 
   try {
     // Main post - haiku (quoted) + one-liner as clickable link
@@ -98,7 +101,7 @@ ${formattedHaiku}
 <${article.url}|${oneLiner}>`;
 
     const mainResult = await client.chat.postMessage({
-      channel: config.slackChannelId,
+      channel,
       text: mainText,
       unfurl_links: true,
     });
@@ -112,7 +115,7 @@ ${formattedHaiku}
     // Reply 1: ELI5 (for both technical and announcements)
     const eli5Text = truncateForSlack(toSlackMarkdown(summaries.secondaryAnalysis));
     await client.chat.postMessage({
-      channel: config.slackChannelId,
+      channel,
       thread_ts: threadTs,
       text: `*ELI5*\n\n${summaries.secondaryAnalysis}`,
       blocks: [
@@ -138,7 +141,7 @@ ${formattedHaiku}
     const researchLabel = article.contentType === 'technical' ? '🎯 The Scoop' : '🎯 The Scoop';
     const researchText = truncateForSlack(toSlackMarkdown(researchContext));
     await client.chat.postMessage({
-      channel: config.slackChannelId,
+      channel,
       thread_ts: threadTs,
       text: `*${researchLabel}*\n\n${researchContext}`,
       blocks: [
