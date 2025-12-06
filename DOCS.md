@@ -1,6 +1,6 @@
 # AI News Bot - Documentation
 
-> Last updated: 2025-12-05
+> Last updated: 2025-12-06
 > Status: Production ready
 > Slack channel: `#ai-latest`
 
@@ -36,11 +36,12 @@ By monitoring Anthropic, OpenAI, DeepMind, Meta, Qwen, and other frontier labs, 
                         ┌──────────────────────────────────┐
 ┌─────────────────┐     │     Bun HTTP Server (server.ts)  │
 │  Slack Command  │────▶│                                  │────▶ Slack
-│  /ai-news       │     │  GET  /cron    → scrape all      │
-└─────────────────┘     │  POST /slack/* → slash command   │
+│  /ai-news       │     │  GET  /cron        → scrape all  │
+└─────────────────┘     │  POST /slack/*     → slash cmd   │
 ┌─────────────────┐     │  POST /slack/events → @mentions  │
-│  @mention       │────▶│  GET  /        → health check    │
-└─────────────────┘     └──────────────────────────────────┘
+│  @mention       │────▶│  GET  /debug/state → state info  │
+└─────────────────┘     │  GET  /            → health      │
+                        └──────────────────────────────────┘
 ```
 
 ### Tech Stack
@@ -189,6 +190,23 @@ State is stored in `seen_articles.json`:
 - `seen`: Articles already posted (by URL hash)
 - `alertedSources`: Sources with active alerts (to prevent spam)
 
+### Debug Endpoint
+
+Check Railway state:
+```
+curl https://your-app.railway.app/debug/state
+```
+
+Returns:
+```json
+{
+  "stateFilePath": "/app/data/seen_articles.json",
+  "seenCount": 183,
+  "alertedCount": 0,
+  "recentArticles": ["..."]
+}
+```
+
 ## Cost Estimates
 
 **Scraping/checking**: Basically free (just HTTP requests)
@@ -275,21 +293,28 @@ Attach a Railway volume:
 - URL can be anywhere in the text
 
 The bot will:
-1. Respond immediately with "Processing..."
+1. Post `:thinking_party: Thinking...` publicly
 2. Fetch, summarize, and research the article
-3. Post to the channel where command was run
-4. Send you a confirmation
+3. Update the "Thinking..." message with the final haiku + link
+4. Add thread replies (ELI5 + Research)
+
+**Note:** Duplicate detection only applies to `#ai-latest`. Using `/ai-news` in other channels always works, even for previously posted articles.
 
 ## @mention Q&A
 
-In any article thread, @mention the bot to ask questions:
+In any thread, @mention the bot to ask questions:
 
 ```
 @ai-news-bot what's the main technical contribution?
 @ai-news-bot how does this compare to what Anthropic is doing?
 ```
 
-Uses GPT-5.1 with web search. Personality: witty, direct, technical but accessible.
+The bot will:
+1. Post `:thinking_party: Thinking...` publicly
+2. Run GPT-5.1 with web search
+3. Update the "Thinking..." message with the answer
+
+Personality: witty, direct, Hitchhiker's Guide vibes. Technical but accessible.
 
 ## Design Decisions
 
@@ -307,3 +332,9 @@ Alerts fire once when a source breaks, not every run. Prevents alert fatigue.
 
 ### Independent Selectors Per Source
 Each source has its own CSS selector. Generic rules cause false positives (like grabbing `/blog/topic/` pages instead of articles).
+
+### Per-Channel Duplicate Detection
+The "seen" state only applies to `#ai-latest`. Using `/ai-news` in other channels bypasses duplicate detection and doesn't pollute the seen map. This lets teams repost articles to their own channels freely.
+
+### "Thinking..." UX
+Both `/ai-news` and @mentions show a public `:thinking_party: Thinking...` message that gets updated with the final result. This gives immediate feedback and lets everyone in the channel see the bot is working.
