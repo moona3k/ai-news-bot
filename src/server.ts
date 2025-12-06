@@ -402,12 +402,12 @@ const server = Bun.serve({
           }).finally(() => {
             // Schedule next tick only if not stopped
             if (!animationStopped) {
-              animationInterval = setTimeout(tick, 2000);
+              animationInterval = setTimeout(tick, 3000);
             }
           });
         };
-        // Start first tick after 2s
-        animationInterval = setTimeout(tick, 2000);
+        // Start first tick after 3s
+        animationInterval = setTimeout(tick, 3000);
       };
 
       const stopDotAnimation = () => {
