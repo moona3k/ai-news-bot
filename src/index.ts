@@ -28,7 +28,7 @@ async function generateAndPostCartoon(
   channelId?: string
 ): Promise<void> {
   // Post progress message
-  const progressTs = await postThreadMessage('🎨 Generating cartoon...', threadTs, channelId);
+  const progressTs = await postThreadMessage('🎨 Drawing comic strip...', threadTs, channelId);
 
   const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
 
