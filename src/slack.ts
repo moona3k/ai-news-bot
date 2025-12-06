@@ -63,6 +63,30 @@ export async function deleteMessage(
   }
 }
 
+/**
+ * Update a message's text
+ */
+export async function updateMessage(
+  messageTs: string,
+  text: string,
+  channelId?: string
+): Promise<boolean> {
+  const client = getClient();
+  const config = getConfig();
+  const channel = channelId || config.slackChannelId;
+
+  try {
+    await client.chat.update({
+      channel,
+      ts: messageTs,
+      text,
+    });
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 export interface ArticlePost {
   title: string;
   url: string;

@@ -7,7 +7,7 @@ import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, 
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
-import { postArticleThread, sendMessage, postImageReply, postCartoonError, postThreadMessage, deleteMessage } from './slack';
+import { postArticleThread, sendMessage, postImageReply, postCartoonError, postThreadMessage, deleteMessage, updateMessage } from './slack';
 import { generateArticleCartoon, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
@@ -27,12 +27,32 @@ async function generateAndPostCartoon(
   threadTs: string,
   channelId?: string
 ): Promise<void> {
-  // Post progress message
-  const progressTs = await postThreadMessage('🎨 Drawing comic strip...', threadTs, channelId);
+  // Post progress message with animated dots
+  const progressTs = await postThreadMessage('🎨 Drawing comic strip.', threadTs, channelId);
+
+  let animationStopped = false;
+  let dotCount = 1;
+  let animationTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  const animateDots = () => {
+    if (animationStopped || !progressTs) return;
+    dotCount = (dotCount % 3) + 1;
+    const dots = '.'.repeat(dotCount);
+    updateMessage(progressTs, `🎨 Drawing comic strip${dots}`, channelId).finally(() => {
+      if (!animationStopped) {
+        animationTimeout = setTimeout(animateDots, 2000);
+      }
+    });
+  };
+
+  // Start animation after 2s
+  animationTimeout = setTimeout(animateDots, 2000);
 
   const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
 
-  // Delete progress message
+  // Stop animation and delete progress message
+  animationStopped = true;
+  if (animationTimeout) clearTimeout(animationTimeout);
   if (progressTs) {
     await deleteMessage(progressTs, channelId);
   }
