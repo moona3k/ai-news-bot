@@ -37,7 +37,7 @@ async function handleMentionQuestion(channelId: string, threadTs: string, questi
     const thinkingMsg = await client.chat.postMessage({
       channel: channelId,
       thread_ts: threadTs,
-      text: '🤔 Thinking...',
+      text: ':thinking_party: Thinking...',
     });
     thinkingTs = thinkingMsg.ts;
   } catch (e) {
