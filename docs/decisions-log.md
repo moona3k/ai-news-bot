@@ -170,12 +170,50 @@ Sources:
 
 **Likely cause:** The script generated for that article may have contained terms that triggered OpenAI's content moderation (possibly related to AI capabilities, benchmarks, or competitive comparisons).
 
-**Mitigation options:**
-1. Add retry logic with modified prompt
-2. Add guidelines to script generation to avoid potentially flagged content
-3. Graceful fallback (skip image if blocked)
+**Mitigation implemented:** When image generation fails, post error notification to Slack thread with:
+- Error message from OpenAI
+- The prompt that was used (in code block for debugging)
 
-**Current behavior:** Image generation fails silently, logs error, cartoon not posted.
+**Update:** After further testing, the moderation filter seems rare. Successfully generated cartoons for 7+ articles without issues:
+- Cohere Command R7B
+- NVIDIA LLM on Windows
+- OpenAI o3-mini (worked on retry)
+- HuggingFace smolagents
+- LangChain Multi-Agent Workflows
+- OpenAI Sora
+- Anthropic Claude 3.5 Sonnet
+
+The initial o3-mini failure may have been due to specific script content that varied between runs.
+
+### Panel Captions Added (2024-12-06)
+
+Added short labels below each panel (3-6 words) to improve storytelling clarity.
+
+**Format update:**
+```
+PANEL 1 (Setup): [scene description] | LABEL: [short caption]
+PANEL 2 (Problem): [scene description] | LABEL: [short caption]
+PANEL 3 (Realization): [scene description] | LABEL: [short caption]
+PANEL 4 (Punchline): [scene description] | LABEL: [short caption]
+```
+
+**Example labels:**
+- "Setting all the options"
+- "Same input, different answers"
+- "The floating-point jungle"
+- "Meanwhile, in reality"
+
+Makes the cartoon narrative clearer without being text-heavy.
+
+### Cartoon Caption Styling (2024-12-06)
+
+The witty one-liner caption is now styled for Slack:
+```
+🎨 *_Basically, even if you ask your AI for the "same" result, it's like flipping a coin._* 🎨
+```
+- Bold + italic (`*_text_*`)
+- Art emoji on both sides
+- Conversational "basically, ..." tone
 
 #### 2. URL-only vs URL + Pre-extracted Text
 **Question:** When using Responses API, is it better to provide:
