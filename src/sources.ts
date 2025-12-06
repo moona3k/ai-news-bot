@@ -70,6 +70,13 @@ export const SOURCES: Source[] = [
     baseUrl: 'https://reflection.ai',
     contentType: 'technical',
   },
+  {
+    name: 'Cognition (Devin)',
+    indexUrl: 'https://cognition.ai/blog',
+    articleSelector: 'a[href^="/blog/"]:not([href="/blog/"]):not([href*="/1"]):not([href*="/2"])',
+    baseUrl: 'https://cognition.ai',
+    contentType: 'technical',
+  },
 
   // Announcement sources (Hype-Aware Analysis)
   {
