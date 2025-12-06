@@ -7,6 +7,7 @@
 // The script content may need adjustment to avoid triggering safety filters.
 
 import { openai } from './openai';
+import { Attachment, traced } from 'braintrust';
 import type { ContentType } from './sources';
 
 // ============================================================
@@ -294,6 +295,7 @@ export interface CartoonError {
  * 2. Image model executes the script
  *
  * Returns image + caption on success, or error details on failure
+ * Traced in Braintrust with the generated image attached for UI rendering
  */
 export async function generateArticleCartoon(
   haiku: string,
@@ -301,30 +303,60 @@ export async function generateArticleCartoon(
   articleExcerpt: string,
   contentType: ContentType
 ): Promise<CartoonResult | CartoonError> {
-  // Step 1: Generate script
-  const script = await generateCartoonScript(haiku, articleTitle, articleExcerpt, contentType);
+  return traced(
+    async (span) => {
+      // Step 1: Generate script
+      const script = await generateCartoonScript(haiku, articleTitle, articleExcerpt, contentType);
 
-  if (!script) {
-    console.log('    Cartoon generation failed at script step');
-    return { success: false, error: 'Failed to generate cartoon script' };
-  }
+      if (!script) {
+        console.log('    Cartoon generation failed at script step');
+        span.log({ output: { error: 'Failed to generate cartoon script' } });
+        return { success: false, error: 'Failed to generate cartoon script' };
+      }
 
-  // Step 2: Generate image from script
-  const result = await generateImageFromScript(script);
+      // Step 2: Generate image from script
+      const result = await generateImageFromScript(script);
 
-  if ('error' in result) {
-    return {
-      success: false,
-      error: result.error.error,
-      prompt: result.error.prompt,
-    };
-  }
+      if ('error' in result) {
+        span.log({
+          output: { error: result.error.error },
+          metadata: { prompt: result.error.prompt },
+        });
+        return {
+          success: false,
+          error: result.error.error,
+          prompt: result.error.prompt,
+        };
+      }
 
-  return {
-    success: true,
-    image: result.image,
-    caption: script.caption || 'Here\'s a cartoon for you',
-  };
+      // Log success with image attachment for Braintrust UI rendering
+      const imageBuffer = Buffer.from(result.image, 'base64');
+      span.log({
+        output: {
+          image: new Attachment({
+            data: imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength),
+            filename: 'cartoon.png',
+            contentType: 'image/png',
+          }),
+          caption: script.caption,
+        },
+        metadata: {
+          style: script.style,
+          character: script.character,
+        },
+      });
+
+      return {
+        success: true,
+        image: result.image,
+        caption: script.caption || 'Here\'s a cartoon for you',
+      };
+    },
+    {
+      name: 'generateArticleCartoon',
+      event: { input: { haiku, articleTitle, articleExcerpt: articleExcerpt.slice(0, 500), contentType } },
+    }
+  );
 }
 
 /**

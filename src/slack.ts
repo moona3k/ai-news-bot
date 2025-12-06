@@ -179,11 +179,10 @@ ${formattedHaiku}
 
     // If we have a processing message, update it; otherwise post new
     if (processingTs) {
-      await client.chat.update({
-        channel,
-        ts: processingTs,
-        text: mainText,
-      });
+      // Delay update by 5s to ensure animation has stopped (avoids race condition)
+      setTimeout(() => {
+        client.chat.update({ channel, ts: processingTs, text: mainText }).catch(() => {});
+      }, 5000);
       threadTs = processingTs;
     } else {
       const mainResult = await client.chat.postMessage({
