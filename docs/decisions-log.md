@@ -20,15 +20,26 @@ Currently using Chat Completions API with cheerio/@mozilla/readability for artic
 
 **Implication:** To analyze article images, we'd need a separate pipeline:
 1. Fetch the page and extract image URLs
-2. Provide those images explicitly to the Responses API vision capabilities
-3. This adds complexity and cost
+2. Filter to relevant images (skip logos, icons, ads) - heuristics or lightweight model
+3. Provide those images explicitly to the Responses API vision capabilities
+4. This adds complexity and cost
 
-**Future extension idea - Image Generation:** The Responses API DOES support image generation via `image_generation` tool:
+**Decision (2024-12-06): DEFER** - Too much complexity for uncertain value:
+- Filtering logic is error-prone (risk of noise if done wrong)
+- Majority of articles may not have useful visuals anyway
+- Cost/benefit doesn't justify the engineering effort right now
+
+**Future extension idea - Image Generation (PROMISING):** The Responses API DOES support image generation via `image_generation` tool:
 - Models: dall-e-2, dall-e-3, or gpt-image-1 (newest)
 - gpt-image-1 supports transparent backgrounds, streaming, longer prompts (32K chars)
 - Returns base64-encoded images
 - Could generate explanatory visuals, "spicy take" images, or witty images
 - **Viable for 3rd Slack reply** - would need to decode base64 and upload to Slack
+
+This is a cleaner feature than image analysis because:
+- Self-contained (doesn't depend on article having good images)
+- Always adds value (fun/engagement)
+- No filtering logic needed
 
 Sources:
 - https://platform.openai.com/docs/guides/tools-web-search
