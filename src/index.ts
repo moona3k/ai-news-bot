@@ -246,7 +246,9 @@ export async function processManualUrl(
 
     // Post to Slack
     console.log(`Posting to Slack...`);
-    const domain = new URL(url).hostname.replace('www.', '');
+    // Extract domain name without TLD (e.g., "anthropic.com" → "anthropic")
+    const hostname = new URL(url).hostname.replace('www.', '');
+    const domain = hostname.split('.').slice(0, -1).join('.') || hostname;
     const threadTs = await postArticleThread(
       {
         title: article.title,
