@@ -84,6 +84,13 @@ export const SOURCES: Source[] = [
     baseUrl: 'https://allenai.org',
     contentType: 'technical',
   },
+  {
+    name: 'Meta Engineering (AI)',
+    indexUrl: 'https://engineering.fb.com/category/ai-research/',
+    articleSelector: 'a[href*="/202"]',
+    baseUrl: 'https://engineering.fb.com',
+    contentType: 'technical',
+  },
 
   // Announcement sources (Hype-Aware Analysis)
   {
