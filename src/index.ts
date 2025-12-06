@@ -8,7 +8,7 @@ import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
 import { postArticleThread, sendMessage, postImageReply } from './slack';
-import { generateArticleImage, generateArticleImageWithTool, extractHaiku } from './image-generator';
+import { generateArticleCartoon, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
 
@@ -17,42 +17,19 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Generate and post images based on the configured mode
+ * Generate and post a 4-panel cartoon for the article
  */
-async function generateAndPostImages(
+async function generateAndPostCartoon(
   haiku: string,
   articleTitle: string,
   articleContent: string,
   contentType: ContentType,
   threadTs: string,
-  mode: 'option-a' | 'option-b' | 'both',
   channelId?: string
 ): Promise<void> {
-  // Option A: Responses API with image_generation tool (model decides)
-  if (mode === 'option-a' || mode === 'both') {
-    const resultA = await generateArticleImageWithTool(
-      haiku,
-      articleTitle,
-      articleContent,
-      contentType
-    );
-    if (resultA.image) {
-      const caption = mode === 'both'
-        ? '🎨 _Option A: Model-decided illustration_'
-        : '🎨 _AI-generated illustration_';
-      await postImageReply(resultA.image, threadTs, channelId, caption);
-    }
-  }
-
-  // Option B: Separate gpt-image-1 call (always generates)
-  if (mode === 'option-b' || mode === 'both') {
-    const imageB = await generateArticleImage(haiku, articleTitle, contentType);
-    if (imageB) {
-      const caption = mode === 'both'
-        ? '🎨 _Option B: Direct generation illustration_'
-        : '🎨 _AI-generated illustration_';
-      await postImageReply(imageB, threadTs, channelId, caption);
-    }
+  const cartoon = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
+  if (cartoon) {
+    await postImageReply(cartoon, threadTs, channelId, '🎨 _4-panel cartoon_');
   }
 }
 
@@ -150,18 +127,16 @@ async function processSource(source: Source, state: State): Promise<State> {
       );
 
       if (threadTs) {
-        // Generate and post image(s) based on config
+        // Generate and post 4-panel cartoon if enabled
         const config = getConfig();
-        const haiku = extractHaiku(summaries.mainSummary);
-
-        if (config.imageGenMode !== 'off') {
-          await generateAndPostImages(
+        if (config.imageGenEnabled) {
+          const haiku = extractHaiku(summaries.mainSummary);
+          await generateAndPostCartoon(
             haiku,
             article.title,
             article.content,
             source.contentType,
-            threadTs,
-            config.imageGenMode
+            threadTs
           );
         }
 
@@ -251,16 +226,15 @@ export async function processManualUrl(
     );
 
     if (threadTs) {
-      // Generate and post image(s) based on config
-      const haiku = extractHaiku(summaries.mainSummary);
-      if (config.imageGenMode !== 'off') {
-        await generateAndPostImages(
+      // Generate and post 4-panel cartoon if enabled
+      if (config.imageGenEnabled) {
+        const haiku = extractHaiku(summaries.mainSummary);
+        await generateAndPostCartoon(
           haiku,
           article.title,
           article.content,
           contentType,
           threadTs,
-          config.imageGenMode,
           channelId
         );
       }

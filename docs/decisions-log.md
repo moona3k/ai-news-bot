@@ -83,6 +83,38 @@ Sources:
 - https://www.promptingguide.ai/guides/4o-image-generation
 - https://img.ly/blog/openai-gpt-4o-image-generation-api-gpt-image-1-a-complete-guide-for-creative-workflows-for-2025/
 
+### Image Generation Experiment Results (2024-12-06)
+
+**Test:** Generated images for "Defeating Nondeterminism in LLM Inference" article
+
+**Option A (Responses API with image_generation tool):** REMOVED
+- Model chose to generate, but result was too abstract
+- Less control over output style
+- Removed from codebase
+
+**Option B (Direct gpt-image-1 API):** NEEDS IMPROVEMENT
+- Generated generic "AI brain with floating numbers" style images
+- Too abstract, not memorable or engaging
+- Doesn't capture the article's specific insights
+
+**New Approach: 4-Panel Cartoon**
+
+Instead of abstract illustrations, generate a 4-panel comic strip that:
+- Tells a mini-story capturing a key insight from the article
+- Has clear narrative structure (setup → conflict → resolution → punchline/insight)
+- Is more memorable and shareable
+- Uses consistent character(s) and visual style
+
+**Implementation strategy:**
+1. First attempt: Single prompt to gpt-image-1 describing all 4 panels
+2. Fallback if needed: Two-step process
+   - Step 1: LLM generates cartoon script (4 panel descriptions)
+   - Step 2: Image model generates from detailed script
+
+The two-step approach offloads cognitive/creative work to the language model, which is better at narrative structure, then lets the image model focus purely on visual execution.
+
+**Insight:** This follows an emerging agent architecture pattern - decompose complex tasks into specialized steps rather than asking one model to do everything. Agent best practices are still maturing, but task decomposition is proving valuable.
+
 #### 2. URL-only vs URL + Pre-extracted Text
 **Question:** When using Responses API, is it better to provide:
 - (A) Just the URL, or
