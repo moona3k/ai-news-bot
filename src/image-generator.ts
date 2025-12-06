@@ -1,6 +1,10 @@
 // Image Generator module - 2-step cartoon pipeline
 // Step 1: LLM generates structured script (Responses API with optional web_search)
 // Step 2: Image model executes the script (gpt-image-1)
+//
+// Note: gpt-image-1 has content moderation that can reject certain prompts.
+// If this happens, the error will be "moderation_blocked" (400 status).
+// The script content may need adjustment to avoid triggering safety filters.
 
 import { openai } from './openai';
 import type { ContentType } from './sources';

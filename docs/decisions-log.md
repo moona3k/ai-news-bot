@@ -164,6 +164,19 @@ Sources:
 - https://7labs.io/article/create-comic-strips-ai.html
 - https://www.analyticsvidhya.com/blog/2025/09/build-comic-generator-using-openai-gemini/
 
+### Image Generation Safety Filter Issue (2024-12-06)
+
+**Observation:** When testing with OpenAI o3-mini announcement article, gpt-image-1 rejected the prompt with `moderation_blocked` error (400 status).
+
+**Likely cause:** The script generated for that article may have contained terms that triggered OpenAI's content moderation (possibly related to AI capabilities, benchmarks, or competitive comparisons).
+
+**Mitigation options:**
+1. Add retry logic with modified prompt
+2. Add guidelines to script generation to avoid potentially flagged content
+3. Graceful fallback (skip image if blocked)
+
+**Current behavior:** Image generation fails silently, logs error, cartoon not posted.
+
 #### 2. URL-only vs URL + Pre-extracted Text
 **Question:** When using Responses API, is it better to provide:
 - (A) Just the URL, or
