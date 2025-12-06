@@ -14,6 +14,55 @@ function getClient(): WebClient {
   return _client;
 }
 
+/**
+ * Post a temporary message to a thread (for progress indicators)
+ * Returns the message ts so it can be deleted later
+ */
+export async function postThreadMessage(
+  text: string,
+  threadTs: string,
+  channelId?: string
+): Promise<string | null> {
+  const client = getClient();
+  const config = getConfig();
+  const channel = channelId || config.slackChannelId;
+
+  try {
+    const result = await client.chat.postMessage({
+      channel,
+      thread_ts: threadTs,
+      text,
+    });
+    return result.ts || null;
+  } catch (error) {
+    console.error('Failed to post thread message:', error);
+    return null;
+  }
+}
+
+/**
+ * Delete a message
+ */
+export async function deleteMessage(
+  messageTs: string,
+  channelId?: string
+): Promise<boolean> {
+  const client = getClient();
+  const config = getConfig();
+  const channel = channelId || config.slackChannelId;
+
+  try {
+    await client.chat.delete({
+      channel,
+      ts: messageTs,
+    });
+    return true;
+  } catch (error) {
+    console.error('Failed to delete message:', error);
+    return false;
+  }
+}
+
 export interface ArticlePost {
   title: string;
   url: string;

@@ -7,7 +7,7 @@ import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, 
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
-import { postArticleThread, sendMessage, postImageReply, postCartoonError } from './slack';
+import { postArticleThread, sendMessage, postImageReply, postCartoonError, postThreadMessage, deleteMessage } from './slack';
 import { generateArticleCartoon, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
@@ -27,7 +27,15 @@ async function generateAndPostCartoon(
   threadTs: string,
   channelId?: string
 ): Promise<void> {
+  // Post progress message
+  const progressTs = await postThreadMessage('🎨 Generating cartoon...', threadTs, channelId);
+
   const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
+
+  // Delete progress message
+  if (progressTs) {
+    await deleteMessage(progressTs, channelId);
+  }
 
   if (result.success) {
     const caption = `🎨 *_${result.caption}_* 🎨`;
