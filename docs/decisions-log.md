@@ -215,6 +215,35 @@ The witty one-liner caption is now styled for Slack:
 - Art emoji on both sides
 - Conversational "basically, ..." tone
 
+### Ghibli Style Experiment (2024-12-06)
+
+**Experiment:** Tested Studio Ghibli anime style as an alternative to xkcd minimalist.
+
+**Ghibli approach:**
+- Soft watercolor textures, pastel colors, hand-drawn anime aesthetic
+- Nature-inspired settings (enchanted forests, magical lamps)
+- Character "Momo" with expressive eyes and wisp companion
+- Emotional arc: wonder → frustration → understanding → harmony
+
+**Comparison results (same article: "Defeating Nondeterminism in LLM Inference"):**
+
+| Aspect | xkcd | Ghibli |
+|--------|------|--------|
+| Metaphor | Direct - gremlins tossing dice in GPU | Abstract - magic lamp giving different answers |
+| Clarity | Very clear, punchy labels | Beautiful but less direct |
+| Tone | Humorous, tech-insider | Whimsical, storytelling |
+| Punchline | "Order...almost" + sneaking gremlin | "Harmony in the answers" |
+
+**Decision: Keep xkcd only**
+
+Reasons:
+- xkcd captures the *essence* of technical concepts more clearly
+- Visual metaphors are more direct (gremlins with dice = nondeterminism)
+- Better punchlines that land with tech audiences
+- Ghibli is beautiful but the abstraction loses the technical insight
+
+Ghibli could work for a different use case (art-focused newsletter, storytelling), but for a tech newsletter, xkcd wins.
+
 #### 2. URL-only vs URL + Pre-extracted Text
 **Question:** When using Responses API, is it better to provide:
 - (A) Just the URL, or
