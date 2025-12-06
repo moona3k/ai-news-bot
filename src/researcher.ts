@@ -69,7 +69,7 @@ Search the web for context and provide your research findings:`;
 
   try {
     const response = await openai.responses.create({
-      model: 'gpt-4o',
+      model: 'gpt-5.1',
       input: fullPrompt,
       tools: [{ type: 'web_search' }],
     });
@@ -112,7 +112,7 @@ ${articleContent.slice(0, 5000)}`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-5.1-chat-latest',
       messages: [{ role: 'user', content: fullPrompt }],
     });
 
