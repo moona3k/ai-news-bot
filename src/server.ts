@@ -389,24 +389,39 @@ const server = Bun.serve({
       const url_clean = parts[0];
       const contentType: ContentType = parts[1] === 'announcement' ? 'announcement' : 'technical';
 
-      // Respond immediately, process in background
-      processManualUrl(url_clean, contentType, payload.channel_id)
-        .then((result) => {
-          sendSlackResponse(payload.response_url,
-            result.success ? `✅ ${result.message}` : `❌ ${result.message}`
-          );
-        })
-        .catch((error) => {
-          sendSlackResponse(payload.response_url, `❌ Error: ${error.message}`);
-        });
+      // Post public "Thinking..." message, then process in background
+      const client = getSlackClient();
+      let processingTs: string | undefined;
 
-      return new Response(JSON.stringify({
-        response_type: 'ephemeral',
-        text: `⏳ Processing ${url_clean}...`,
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+      client.chat.postMessage({
+        channel: payload.channel_id,
+        text: `:thinking_party: Processing <${url_clean}|${new URL(url_clean).hostname}>...`,
+      }).then((thinkingMsg) => {
+        processingTs = thinkingMsg.ts;
+        return processManualUrl(url_clean, contentType, payload.channel_id, processingTs);
+      }).then(async (result) => {
+        if (!result.success && processingTs) {
+          // Update "Thinking..." with error
+          await client.chat.update({
+            channel: payload.channel_id,
+            ts: processingTs,
+            text: `❌ ${result.message}`,
+          });
+        }
+      }).catch(async (error) => {
+        if (processingTs) {
+          await client.chat.update({
+            channel: payload.channel_id,
+            ts: processingTs,
+            text: `❌ Error: ${error.message}`,
+          });
+        } else {
+          sendSlackResponse(payload.response_url, `❌ Error: ${error.message}`);
+        }
       });
+
+      // Return empty response (the public "Thinking..." is the feedback)
+      return new Response('', { status: 200 });
     }
 
     return new Response('Not Found', { status: 404 });

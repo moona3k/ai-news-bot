@@ -148,6 +148,7 @@ async function processSource(source: Source, state: State): Promise<State> {
 /**
  * Process a single URL manually (for Slack slash command)
  * @param channelId - Optional channel to post to (defaults to config channel)
+ * @param processingTs - Optional ts of a "Processing..." message to update
  *
  * Note: Seen state is only checked/updated when posting to the primary channel.
  * Other channels can post the same article multiple times without restriction.
@@ -155,7 +156,8 @@ async function processSource(source: Source, state: State): Promise<State> {
 export async function processManualUrl(
   url: string,
   contentType: ContentType = 'technical',
-  channelId?: string
+  channelId?: string,
+  processingTs?: string
 ): Promise<{ success: boolean; message: string }> {
   console.log(`\n=== Processing Manual URL ===`);
   console.log(`URL: ${url}`);
@@ -213,7 +215,8 @@ export async function processManualUrl(
       },
       summaries,
       researchContext,
-      channelId
+      channelId,
+      processingTs
     );
 
     if (threadTs) {

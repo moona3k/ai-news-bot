@@ -68,12 +68,14 @@ function formatHaikuSummary(text: string): string {
 /**
  * Post an article to Slack with thread replies
  * @param channelId - Optional channel to post to (defaults to config.slackChannelId)
+ * @param processingTs - Optional ts of a "Processing..." message to update instead of posting new
  */
 export async function postArticleThread(
   article: ArticlePost,
   summaries: SummaryOutputs,
   researchContext: string,
-  channelId?: string
+  channelId?: string,
+  processingTs?: string
 ): Promise<string | null> {
   const client = getClient();
   const config = getConfig();
@@ -100,13 +102,24 @@ ${formattedHaiku}
 
 <${article.url}|${oneLiner}>`;
 
-    const mainResult = await client.chat.postMessage({
-      channel,
-      text: mainText,
-      unfurl_links: true,
-    });
+    let threadTs: string | undefined;
 
-    const threadTs = mainResult.ts;
+    // If we have a processing message, update it; otherwise post new
+    if (processingTs) {
+      await client.chat.update({
+        channel,
+        ts: processingTs,
+        text: mainText,
+      });
+      threadTs = processingTs;
+    } else {
+      const mainResult = await client.chat.postMessage({
+        channel,
+        text: mainText,
+        unfurl_links: true,
+      });
+      threadTs = mainResult.ts;
+    }
     if (!threadTs) {
       console.error('Failed to get thread_ts from main post');
       return null;
