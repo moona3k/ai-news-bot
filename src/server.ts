@@ -2,9 +2,99 @@
 // Provides /cron and /slack endpoints for Railway deployment
 
 import { createHmac, timingSafeEqual } from 'crypto';
+import { WebClient } from '@slack/web-api';
 import { getConfig, loadConfig } from './config';
 import { runScrapeCheck, processManualUrl } from './index';
 import type { ContentType } from './sources';
+
+let _slackClient: WebClient | null = null;
+function getSlackClient(): WebClient {
+  if (!_slackClient) {
+    const config = getConfig();
+    _slackClient = new WebClient(config.slackBotToken);
+  }
+  return _slackClient;
+}
+
+// Handle @mention questions in threads
+async function handleMentionQuestion(channelId: string, threadTs: string, question: string): Promise<void> {
+  const client = getSlackClient();
+
+  try {
+    // Get thread messages for context
+    const threadResult = await client.conversations.replies({
+      channel: channelId,
+      ts: threadTs,
+    });
+
+    const messages = threadResult.messages || [];
+
+    // Find the original article URL from the thread
+    let articleUrl: string | null = null;
+    let threadContext = '';
+
+    for (const msg of messages) {
+      const text = msg.text || '';
+      threadContext += text + '\n\n';
+
+      // Look for URL in the message
+      const urlMatch = text.match(/<(https?:\/\/[^|>]+)/);
+      if (urlMatch && !articleUrl) {
+        articleUrl = urlMatch[1];
+      }
+    }
+
+    // Build prompt with thread context
+    const prompt = `You are a helpful AI assistant answering questions about an article that was shared in a Slack thread.
+
+Thread context (previous messages):
+${threadContext}
+
+${articleUrl ? `Article URL: ${articleUrl}` : ''}
+
+User question: ${question}
+
+Answer concisely and helpfully. If you don't have enough context to answer, say so.`;
+
+    // Call OpenAI
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const answer = data.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+
+    // Post reply in thread
+    await client.chat.postMessage({
+      channel: channelId,
+      thread_ts: threadTs,
+      text: answer,
+    });
+
+  } catch (error) {
+    console.error('Error handling mention:', error);
+
+    // Post error message
+    await client.chat.postMessage({
+      channel: channelId,
+      thread_ts: threadTs,
+      text: `Sorry, I encountered an error: ${error}`,
+    });
+  }
+}
 
 // Verify Slack request signature
 function verifySlackSignature(
@@ -115,10 +205,17 @@ const server = Bun.serve({
         });
       }
 
-      // Handle app_mention events (will implement full handler later)
+      // Handle app_mention events
       if (payload.event?.type === 'app_mention') {
-        console.log('App mention received:', payload.event);
-        // TODO: Implement thread Q&A
+        const event = payload.event;
+        const channelId = event.channel;
+        const threadTs = event.thread_ts || event.ts; // Reply in thread if in thread, else start thread
+        const userQuestion = event.text.replace(/<@[^>]+>/g, '').trim(); // Remove @mention
+
+        console.log('App mention received:', { channelId, threadTs, userQuestion });
+
+        // Process in background
+        handleMentionQuestion(channelId, threadTs, userQuestion).catch(console.error);
       }
 
       return new Response('OK', { status: 200 });
