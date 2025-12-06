@@ -8,7 +8,7 @@
 **Goal**: Slack bot that monitors AI frontier lab blogs, generates LLM-powered summaries, and posts them to a company Slack channel.
 
 **Key Features**:
-- Monitor 10 blog sources (Anthropic, OpenAI, DeepMind, Cursor, Simon Willison, Thinking Machines, Reflection AI)
+- Monitor 13 blog sources (Anthropic, OpenAI, DeepMind, Cursor, Simon Willison, Thinking Machines, Reflection AI, Cognition, Allen AI, Meta)
 - Content-type aware processing (technical vs announcement)
 - Three outputs per article:
   1. **Main post**: Haiku + one-liner (as clickable link) + Slack unfurl
@@ -54,7 +54,7 @@ ai-signals/
 │   ├── server.ts          # HTTP server (Railway entry point)
 │   ├── index.ts           # Core logic + CLI mode
 │   ├── config.ts          # Environment variables
-│   ├── sources.ts         # 10 blog source definitions
+│   ├── sources.ts         # 13 blog source definitions
 │   ├── state.ts           # Seen articles + alert tracking
 │   ├── scraper.ts         # HTML/RSS fetching + Readability
 │   ├── summarizer.ts      # OpenAI GPT-5.1 (haiku + take + ELI5)
@@ -101,10 +101,15 @@ Each source has:
 | Simon Willison | technical | RSS: `/tags/ai.atom` | ✅ Working (AI-only feed) |
 | Thinking Machines | technical | `a[href*="/blog/"]` | ✅ Working |
 | Reflection AI | technical | `a[href^="/blog/"]:not(...)` | ✅ Working |
+| Cognition (Devin) | technical | `a[href^="/blog/"]:not(pagination)` | ✅ Working |
+| Allen AI | technical | `a[href^="/blog/"]` | ✅ Working |
+| Meta Engineering (AI) | technical | `a[href*="/202"]` (date pattern) | ✅ Working |
 
-### OpenAI Unfurl Issue
+### Known Issues
 
-OpenAI uses aggressive Cloudflare protection that blocks Slack's link unfurl bot. When you share OpenAI links in Slack, you get plain text instead of rich preview cards. This is OpenAI's security config, not a bug.
+**OpenAI Unfurl**: OpenAI uses aggressive Cloudflare protection that blocks Slack's link unfurl bot. You get plain text instead of rich preview cards.
+
+**Meta AI Blog**: The main `ai.meta.com/blog` uses heavy React/JS rendering that blocks scraping. Using `engineering.fb.com/category/ai-research/` instead.
 
 ## Scraper Reliability
 
