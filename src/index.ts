@@ -260,7 +260,7 @@ export async function processManualUrl(
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     console.error(`Error processing ${url}:`, detail);
-    return { success: false, message: `Failed to fetch article: ${detail}` };
+    return { success: false, message: `Failed to fetch article: ${detail}\n${url}` };
   }
 }
 
