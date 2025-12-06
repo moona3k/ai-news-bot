@@ -12,17 +12,28 @@ Currently using Chat Completions API with cheerio/@mozilla/readability for artic
 
 **Example:** https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/ contains relevant images that our current text-only scraper misses.
 
-**Hypothesis:** If Responses API can parse images, summaries could be richer and more accurate for visual-heavy content (diagrams, charts, infographics).
+**Research findings (2024-12-06):**
+- **web_search_preview does NOT analyze images** - it primarily extracts text content with citations
+- Images may occasionally appear in ChatGPT's interface, but no visual analysis is performed
+- Image analysis in Responses API only works for **explicitly provided images**, not auto-discovered web content
+- No OCR or visual analysis on embedded images
 
-**Proposed prompt addition:**
-> "If there are images relevant to the article content (diagrams, charts, illustrations), analyze them and incorporate insights into the summary."
+**Implication:** To analyze article images, we'd need a separate pipeline:
+1. Fetch the page and extract image URLs
+2. Provide those images explicitly to the Responses API vision capabilities
+3. This adds complexity and cost
 
-**Future extension idea:** Could Responses API use image generation tools to create:
-- Explanatory visuals
-- "Spicy take" images
-- Witty/fun images for engagement
+**Future extension idea - Image Generation:** The Responses API DOES support image generation via `image_generation` tool:
+- Models: dall-e-2, dall-e-3, or gpt-image-1 (newest)
+- gpt-image-1 supports transparent backgrounds, streaming, longer prompts (32K chars)
+- Returns base64-encoded images
+- Could generate explanatory visuals, "spicy take" images, or witty images
+- **Viable for 3rd Slack reply** - would need to decode base64 and upload to Slack
 
-This could be a third Slack reply with a generated image. (Requires testing if Responses API can return generated images inline.)
+Sources:
+- https://platform.openai.com/docs/guides/tools-web-search
+- https://platform.openai.com/docs/guides/tools-image-generation
+- https://platform.openai.com/docs/guides/images
 
 #### 2. URL-only vs URL + Pre-extracted Text
 **Question:** When using Responses API, is it better to provide:
