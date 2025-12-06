@@ -17,13 +17,15 @@ STYLE: [One of: "xkcd minimalist" | "the oatmeal" | "dilbert office" | "calvin a
 CHARACTER: [Brief consistent character description, e.g., "A stick figure programmer with spiky hair and glasses"]
 CAPTION: [One witty, conversational sentence that explains the cartoon's point - like you're telling a friend "basically, ..."]
 
-PANEL 1 (Setup): [Detailed visual scene description - establish the situation]
-PANEL 2 (Problem): [Detailed visual scene description - introduce tension or confusion]
-PANEL 3 (Realization): [Detailed visual scene description - the "aha" moment]
-PANEL 4 (Punchline): [Detailed visual scene description - the insight or funny conclusion]
+PANEL 1 (Setup): [Visual scene description] | LABEL: [Short caption below panel, 3-6 words]
+PANEL 2 (Problem): [Visual scene description] | LABEL: [Short caption below panel, 3-6 words]
+PANEL 3 (Realization): [Visual scene description] | LABEL: [Short caption below panel, 3-6 words]
+PANEL 4 (Punchline): [Visual scene description] | LABEL: [Short caption below panel, 3-6 words]
 
 Guidelines:
 - The CAPTION should be light, witty, and help someone "get" the cartoon if they're confused
+- Each panel has a scene description AND a short label that appears below it
+- Labels should be punchy - like a comic strip caption (e.g., "Meanwhile, in production...", "The next morning", "Plot twist:")
 - Each panel description should be 1-2 sentences, visually specific
 - Focus on ONE key insight from the article - don't try to explain everything
 - Make it clever, witty, or thought-provoking
@@ -34,17 +36,37 @@ Guidelines:
 
 If you need to search for additional context about the topic, you may do so.`;
 
+interface PanelDescription {
+  scene: string;
+  label: string;
+}
+
 interface CartoonScript {
   style: string;
   character: string;
   caption: string;
-  panels: string[];
+  panels: PanelDescription[];
   raw: string;
 }
 
 /**
  * Parse the structured script output from the LLM
  */
+/**
+ * Parse a panel string that may contain "scene | LABEL: label" format
+ */
+function parsePanel(panelText: string): PanelDescription {
+  const text = panelText.trim();
+  const labelMatch = text.match(/\|\s*LABEL:\s*(.+)$/i);
+
+  if (labelMatch) {
+    const scene = text.replace(/\|\s*LABEL:\s*.+$/i, '').trim();
+    return { scene, label: labelMatch[1].trim() };
+  }
+
+  return { scene: text, label: '' };
+}
+
 function parseScript(raw: string): CartoonScript | null {
   try {
     const styleMatch = raw.match(/STYLE:\s*(.+)/i);
@@ -65,10 +87,10 @@ function parseScript(raw: string): CartoonScript | null {
       character: characterMatch[1].trim(),
       caption: captionMatch ? captionMatch[1].trim() : '',
       panels: [
-        panel1Match[1].trim(),
-        panel2Match[1].trim(),
-        panel3Match[1].trim(),
-        panel4Match[1].trim(),
+        parsePanel(panel1Match[1]),
+        parsePanel(panel2Match[1]),
+        parsePanel(panel3Match[1]),
+        parsePanel(panel4Match[1]),
       ],
       raw,
     };
@@ -156,6 +178,11 @@ Remember to output in the exact format specified (STYLE, CHARACTER, PANEL 1-4).`
  * Build image prompt from structured script
  */
 function buildImagePrompt(script: CartoonScript): string {
+  const panel1Label = script.panels[0].label ? `\nCaption below panel: "${script.panels[0].label}"` : '';
+  const panel2Label = script.panels[1].label ? `\nCaption below panel: "${script.panels[1].label}"` : '';
+  const panel3Label = script.panels[2].label ? `\nCaption below panel: "${script.panels[2].label}"` : '';
+  const panel4Label = script.panels[3].label ? `\nCaption below panel: "${script.panels[3].label}"` : '';
+
   return `Create a 4-panel comic strip (2x2 grid layout) with clear panel borders.
 
 STYLE: ${script.style} - simple, clean line art
@@ -163,19 +190,20 @@ STYLE: ${script.style} - simple, clean line art
 CHARACTER DESIGN: ${script.character}
 (Keep this character consistent across ALL panels)
 
-PANEL 1 (top-left): ${script.panels[0]}
+PANEL 1 (top-left): ${script.panels[0].scene}${panel1Label}
 
-PANEL 2 (top-right): ${script.panels[1]}
+PANEL 2 (top-right): ${script.panels[1].scene}${panel2Label}
 
-PANEL 3 (bottom-left): ${script.panels[2]}
+PANEL 3 (bottom-left): ${script.panels[2].scene}${panel3Label}
 
-PANEL 4 (bottom-right): ${script.panels[3]}
+PANEL 4 (bottom-right): ${script.panels[3].scene}${panel4Label}
 
 Requirements:
 - 2x2 grid with clear black borders between panels
+- Each panel has a small caption/label area below the scene (if specified)
 - Consistent character design across all 4 panels
 - Light/white background
-- Minimal or no text in the image
+- Draw any caption text clearly in a simple sans-serif font
 - Each panel should be visually distinct and tell the story
 - Draw EXACTLY what is described - no interpretation`;
 }
