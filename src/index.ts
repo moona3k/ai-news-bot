@@ -40,13 +40,13 @@ async function generateAndPostCartoon(
     const dots = '.'.repeat(dotCount);
     updateMessage(progressTs, `:party_sunglasses_blob: Drawing comic strip${dots}`, channelId).finally(() => {
       if (!animationStopped) {
-        animationTimeout = setTimeout(animateDots, 3000);
+        animationTimeout = setTimeout(animateDots, 2000);
       }
     });
   };
 
-  // Start animation after 3s
-  animationTimeout = setTimeout(animateDots, 3000);
+  // Start animation after 2s
+  animationTimeout = setTimeout(animateDots, 2000);
 
   const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
 
