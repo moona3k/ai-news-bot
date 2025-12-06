@@ -199,3 +199,46 @@ export async function sendMessage(text: string): Promise<void> {
     console.error('Failed to send Slack message:', error);
   }
 }
+
+/**
+ * Post an image as a thread reply (3rd reply with generated image)
+ * @param imageBase64 - Base64-encoded image data
+ * @param threadTs - Thread timestamp to reply to
+ * @param channelId - Optional channel (defaults to config)
+ * @param caption - Optional caption for the image
+ */
+export async function postImageReply(
+  imageBase64: string,
+  threadTs: string,
+  channelId?: string,
+  caption?: string
+): Promise<boolean> {
+  const client = getClient();
+  const config = getConfig();
+  const channel = channelId || config.slackChannelId;
+
+  try {
+    // Convert base64 to Buffer
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+
+    // Upload file to Slack
+    const uploadResult = await client.files.uploadV2({
+      channel_id: channel,
+      thread_ts: threadTs,
+      file: imageBuffer,
+      filename: 'article-illustration.png',
+      initial_comment: caption || '🎨 _AI-generated illustration_',
+    });
+
+    if (uploadResult.ok) {
+      console.log(`    Image posted to thread`);
+      return true;
+    } else {
+      console.error('Failed to upload image:', uploadResult.error);
+      return false;
+    }
+  } catch (error) {
+    console.error('Failed to post image to Slack:', error);
+    return false;
+  }
+}

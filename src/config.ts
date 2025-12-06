@@ -17,6 +17,12 @@ export interface Config {
 
   // Optional: State file path
   stateFilePath: string;
+
+  // Image generation mode: 'off' | 'option-a' | 'option-b' | 'both'
+  // option-a: Responses API with image_generation tool (model decides)
+  // option-b: Separate gpt-image-1 API call (always generates)
+  // both: Run both and post both images for comparison
+  imageGenMode: 'off' | 'option-a' | 'option-b' | 'both';
 }
 
 function requireEnv(name: string): string {
@@ -32,6 +38,11 @@ function optionalEnv(name: string, defaultValue: string): string {
 }
 
 export function loadConfig(): Config {
+  const imageMode = optionalEnv('IMAGE_GEN_MODE', 'off');
+  if (!['off', 'option-a', 'option-b', 'both'].includes(imageMode)) {
+    throw new Error(`Invalid IMAGE_GEN_MODE: ${imageMode}. Must be 'off', 'option-a', 'option-b', or 'both'`);
+  }
+
   return {
     zaiApiKey: requireEnv('ZAI_API_KEY'),
     anthropicBaseUrl: optionalEnv('ANTHROPIC_BASE_URL', 'https://api.z.ai/api/anthropic'),
@@ -41,6 +52,7 @@ export function loadConfig(): Config {
     webhookSecret: optionalEnv('WEBHOOK_SECRET', ''),
     port: parseInt(optionalEnv('PORT', '3000'), 10),
     stateFilePath: optionalEnv('STATE_FILE_PATH', './seen_articles.json'),
+    imageGenMode: imageMode as Config['imageGenMode'],
   };
 }
 

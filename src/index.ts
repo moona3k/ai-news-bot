@@ -1,18 +1,59 @@
 // AI News Bot - Main orchestration
 // Monitors AI lab blogs, generates summaries, posts to Slack
 
-import { loadConfig } from './config';
+import { loadConfig, getConfig } from './config';
 import { SOURCES, type Source, type ContentType } from './sources';
 import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, markSourceAlerted, clearSourceAlert, type State } from './state';
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
-import { postArticleThread, sendMessage } from './slack';
+import { postArticleThread, sendMessage, postImageReply } from './slack';
+import { generateArticleImage, generateArticleImageWithTool, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Generate and post images based on the configured mode
+ */
+async function generateAndPostImages(
+  haiku: string,
+  articleTitle: string,
+  articleContent: string,
+  contentType: ContentType,
+  threadTs: string,
+  mode: 'option-a' | 'option-b' | 'both',
+  channelId?: string
+): Promise<void> {
+  // Option A: Responses API with image_generation tool (model decides)
+  if (mode === 'option-a' || mode === 'both') {
+    const resultA = await generateArticleImageWithTool(
+      haiku,
+      articleTitle,
+      articleContent,
+      contentType
+    );
+    if (resultA.image) {
+      const caption = mode === 'both'
+        ? '🎨 _Option A: Model-decided illustration_'
+        : '🎨 _AI-generated illustration_';
+      await postImageReply(resultA.image, threadTs, channelId, caption);
+    }
+  }
+
+  // Option B: Separate gpt-image-1 call (always generates)
+  if (mode === 'option-b' || mode === 'both') {
+    const imageB = await generateArticleImage(haiku, articleTitle, contentType);
+    if (imageB) {
+      const caption = mode === 'both'
+        ? '🎨 _Option B: Direct generation illustration_'
+        : '🎨 _AI-generated illustration_';
+      await postImageReply(imageB, threadTs, channelId, caption);
+    }
+  }
 }
 
 async function seedSource(source: Source, state: State): Promise<State> {
@@ -109,6 +150,21 @@ async function processSource(source: Source, state: State): Promise<State> {
       );
 
       if (threadTs) {
+        // Generate and post image(s) based on config
+        const config = getConfig();
+        const haiku = extractHaiku(summaries.mainSummary);
+
+        if (config.imageGenMode !== 'off') {
+          await generateAndPostImages(
+            haiku,
+            article.title,
+            article.content,
+            source.contentType,
+            threadTs,
+            config.imageGenMode
+          );
+        }
+
         // Mark as seen ONLY after successful Slack post
         currentState = markArticleSeen(currentState, url, {
           title: article.title,
@@ -195,6 +251,20 @@ export async function processManualUrl(
     );
 
     if (threadTs) {
+      // Generate and post image(s) based on config
+      const haiku = extractHaiku(summaries.mainSummary);
+      if (config.imageGenMode !== 'off') {
+        await generateAndPostImages(
+          haiku,
+          article.title,
+          article.content,
+          contentType,
+          threadTs,
+          config.imageGenMode,
+          channelId
+        );
+      }
+
       // Only mark as seen for primary channel
       if (isPrimaryChannel) {
         state = markArticleSeen(state, url, {

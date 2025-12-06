@@ -46,6 +46,43 @@ Sources:
 - https://platform.openai.com/docs/guides/tools-image-generation
 - https://platform.openai.com/docs/guides/images
 
+### Image Prompting Research (2024-12-06)
+
+**gpt-image-1 vs DALL-E 3:**
+- gpt-image-1: Better for complex prompts, accurate text rendering, up to 4096x4096
+- DALL-E 3: More cost-efficient, supports style/quality modifiers
+- gpt-image-1 does NOT accept style or quality parameters - prompt-driven only
+
+**Best Practices for Prompts:**
+1. Be specific and detailed - include setting, objects, colors, mood, lighting
+2. Avoid negative prompting ("no X") - focus on what you want
+3. Specify quantities explicitly ("two people" not "people")
+4. Include action/dynamism ("jumping over" not "standing by")
+5. Reference art styles, artists, or themes ("cyberpunk", "Van Gogh style")
+6. Specify aspect ratio (defaults to square otherwise)
+
+**API Usage (gpt-image-1):**
+```ts
+const result = await openai.images.generate({
+  model: "gpt-image-1",
+  prompt: "...",
+  size: "1024x1024" // or 1024x1536, 1536x1024, auto
+});
+// Returns b64_json, NOT URL
+const imageBase64 = result.data[0].b64_json;
+```
+
+**Limitations:**
+- One image per request
+- No inpainting/editing
+- Struggles with non-Latin text
+- Complex anatomical combinations fail
+
+Sources:
+- https://community.openai.com/t/dalle3-and-gpt-image-1-prompt-tips-and-tricks-thread/498040
+- https://www.promptingguide.ai/guides/4o-image-generation
+- https://img.ly/blog/openai-gpt-4o-image-generation-api-gpt-image-1-a-complete-guide-for-creative-workflows-for-2025/
+
 #### 2. URL-only vs URL + Pre-extracted Text
 **Question:** When using Responses API, is it better to provide:
 - (A) Just the URL, or
