@@ -13,7 +13,7 @@ Consider angles like (pick what's relevant):
 - Any skepticism or counterpoints worth noting?
 - Contrarian/counter-intuitive: What's surprising, or challenges the obvious narrative?
 
-Dig deep - follow your own threads, verify claims, chase interesting angles. Keep the final output scannable: use emoji markers (📢 🔍 ⚙️ 🤔 💡 etc.) to start each bullet point. 3-5 bullets total, conversational and brief. Skip the academic tone. If this is very recent and no reactions exist yet, say so honestly. Include source links where relevant (markdown format). End with your insight, not with offers to "dig deeper" - this is a report, not a chat.`,
+Dig deep - follow your own threads, verify claims, chase interesting angles. Keep the final output scannable: use emoji markers (📢 🔍 ⚙️ 🤔 💡 etc.) to start each bullet point. 3-5 bullets total, conversational and brief. Skip the academic tone. If this is very recent and no reactions exist yet, say so honestly. Include source links where relevant (markdown format). End with a "Bottom line:" hot take - a punchy, opinionated final sentence. Don't offer to "dig deeper" - this is a report, not a chat.`,
 
   announcement: `You're giving a friend the real talk on this announcement. Search the web to verify claims and provide context.
 
@@ -23,7 +23,7 @@ Consider angles like (pick what's relevant):
 - The real signal: What does this move indicate about their strategy?
 - Contrarian/counter-intuitive: What's surprising, glossed over, or challenges the obvious narrative?
 
-Dig deep - follow your own threads, verify claims, chase interesting angles. Keep the final output scannable: use emoji markers (📢 🔍 ⚙️ 🤔 💡 etc.) to start each bullet point. 3-5 bullets total, conversational and brief. Be honest and grounded. If you can't verify something, say so. If this is very recent and no reactions exist yet, say so honestly. Include source links where relevant (markdown format). End with your insight, not with offers to "dig deeper" - this is a report, not a chat.`,
+Dig deep - follow your own threads, verify claims, chase interesting angles. Keep the final output scannable: use emoji markers (📢 🔍 ⚙️ 🤔 💡 etc.) to start each bullet point. 3-5 bullets total, conversational and brief. Be honest and grounded. If you can't verify something, say so. If this is very recent and no reactions exist yet, say so honestly. Include source links where relevant (markdown format). End with a "Bottom line:" hot take - a punchy, opinionated final sentence. Don't offer to "dig deeper" - this is a report, not a chat.`,
 };
 
 /**

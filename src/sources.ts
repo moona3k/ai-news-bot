@@ -91,6 +91,15 @@ export const SOURCES: Source[] = [
     baseUrl: 'https://engineering.fb.com',
     contentType: 'technical',
   },
+  {
+    name: 'Qwen (Alibaba)',
+    indexUrl: 'https://qwenlm.github.io/blog/',
+    articleSelector: 'a[href*="/blog/"]:not([href="/blog/"]):not([href*="/zh/"]):not([href*="page/"])',
+    baseUrl: 'https://qwenlm.github.io',
+    contentType: 'technical',
+  },
+  // xAI (Grok) - blocked by Cloudflare bot protection, cannot scrape reliably
+  // DeepSeek - JS-rendered SPA, cannot scrape without headless browser
 
   // Announcement sources (Hype-Aware Analysis)
   {
