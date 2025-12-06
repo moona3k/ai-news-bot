@@ -217,36 +217,59 @@ export interface ImageGenerationError {
   prompt: string;
 }
 
+const IMAGE_GEN_MAX_RETRIES = 3;
+const IMAGE_GEN_RETRY_DELAY = 2000; // 2 seconds
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Step 2: Generate image from script using gpt-image-1
+ * Retries up to IMAGE_GEN_MAX_RETRIES times on failure
  */
 async function generateImageFromScript(script: CartoonScript): Promise<{ image: string } | { error: ImageGenerationError }> {
   const prompt = buildImagePrompt(script);
 
   console.log(`    Step 2: Generating image from script...`);
 
-  try {
-    const result = await openai.images.generate({
-      model: 'gpt-image-1',
-      prompt,
-      size: '1024x1024',
-      n: 1,
-    });
+  let lastError = '';
 
-    const imageBase64 = result.data?.[0]?.b64_json;
+  for (let attempt = 1; attempt <= IMAGE_GEN_MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 1) {
+        console.log(`    Retry attempt ${attempt}/${IMAGE_GEN_MAX_RETRIES}...`);
+      }
 
-    if (!imageBase64) {
-      console.log('    Image generation returned no data');
-      return { error: { error: 'No image data returned', prompt } };
+      const result = await openai.images.generate({
+        model: 'gpt-image-1',
+        prompt,
+        size: '1024x1024',
+        n: 1,
+      });
+
+      const imageBase64 = result.data?.[0]?.b64_json;
+
+      if (!imageBase64) {
+        console.log('    Image generation returned no data');
+        lastError = 'No image data returned';
+        continue;
+      }
+
+      console.log('    Image generated successfully');
+      return { image: imageBase64 };
+    } catch (err: any) {
+      lastError = err?.error?.message || err?.message || String(err);
+      console.error(`    Image generation attempt ${attempt} failed:`, lastError);
+
+      if (attempt < IMAGE_GEN_MAX_RETRIES) {
+        await sleep(IMAGE_GEN_RETRY_DELAY);
+      }
     }
-
-    console.log('    Image generated successfully');
-    return { image: imageBase64 };
-  } catch (err: any) {
-    const errorMessage = err?.error?.message || err?.message || String(err);
-    console.error('    Image generation failed:', errorMessage);
-    return { error: { error: errorMessage, prompt } };
   }
+
+  console.error(`    Image generation failed after ${IMAGE_GEN_MAX_RETRIES} attempts`);
+  return { error: { error: lastError, prompt } };
 }
 
 // ============================================================
