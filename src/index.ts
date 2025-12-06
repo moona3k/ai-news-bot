@@ -148,6 +148,9 @@ async function processSource(source: Source, state: State): Promise<State> {
 /**
  * Process a single URL manually (for Slack slash command)
  * @param channelId - Optional channel to post to (defaults to config channel)
+ *
+ * Note: Seen state is only checked/updated when posting to the primary channel.
+ * Other channels can post the same article multiple times without restriction.
  */
 export async function processManualUrl(
   url: string,
@@ -158,16 +161,21 @@ export async function processManualUrl(
   console.log(`URL: ${url}`);
   console.log(`Content Type: ${contentType}`);
 
+  let config;
   try {
-    loadConfig();
+    config = loadConfig();
   } catch (error) {
     return { success: false, message: `Configuration error: ${error}` };
   }
 
+  // Determine if posting to primary channel (where seen state applies)
+  const targetChannel = channelId || config.slackChannelId;
+  const isPrimaryChannel = targetChannel === config.slackChannelId;
+
   let state = await loadState();
 
-  // Check if already processed
-  if (isArticleSeen(state, url)) {
+  // Only check seen state for primary channel
+  if (isPrimaryChannel && isArticleSeen(state, url)) {
     return { success: false, message: 'Article already processed' };
   }
 
@@ -209,13 +217,15 @@ export async function processManualUrl(
     );
 
     if (threadTs) {
-      // Mark as seen
-      state = markArticleSeen(state, url, {
-        title: article.title,
-        source: 'Manual',
-        contentType,
-      });
-      await saveState(state);
+      // Only mark as seen for primary channel
+      if (isPrimaryChannel) {
+        state = markArticleSeen(state, url, {
+          title: article.title,
+          source: 'Manual',
+          contentType,
+        });
+        await saveState(state);
+      }
       return { success: true, message: `Posted: ${article.title}` };
     } else {
       return { success: false, message: 'Failed to post to Slack' };

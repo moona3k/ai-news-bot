@@ -201,6 +201,47 @@ const server = Bun.serve({
       return new Response('OK', { status: 200 });
     }
 
+    // Debug endpoint - show state summary
+    if (url.pathname === '/debug/state') {
+      try {
+        const stateFile = Bun.file(config.stateFilePath);
+        if (await stateFile.exists()) {
+          const state = JSON.parse(await stateFile.text());
+          const seenCount = Object.keys(state.seen || {}).length;
+          const alertedCount = Object.keys(state.alertedSources || {}).length;
+
+          // Show last 5 articles
+          const recentArticles = Object.values(state.seen || {})
+            .sort((a: any, b: any) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime())
+            .slice(0, 5)
+            .map((a: any) => `${a.source}: ${a.title} (${a.url})`);
+
+          return new Response(JSON.stringify({
+            stateFilePath: config.stateFilePath,
+            seenCount,
+            alertedCount,
+            recentArticles,
+          }, null, 2), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        } else {
+          return new Response(JSON.stringify({
+            stateFilePath: config.stateFilePath,
+            error: 'State file does not exist',
+          }, null, 2), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Cron endpoint - triggers scheduled scrape
     if (url.pathname === '/cron') {
       // Verify webhook secret if configured

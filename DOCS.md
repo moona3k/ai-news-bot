@@ -2,43 +2,45 @@
 
 > Last updated: 2025-12-05
 > Status: Production ready
-> Slack channel: `#agi-pulse`
+> Slack channel: `#ai-latest`
 
 ## The Concept: AGI Pulse
 
 We're not at AGI yet, but we're watching the frontier labs for signals. Every blog post, every research paper, every product announcement is a data point - a pulse check on how close we're getting.
 
-By monitoring Anthropic, OpenAI, DeepMind, Meta, and other frontier labs, we get a real-time feed of progress. The channel name `#agi-pulse` captures this: it's a health check on the state of AI, delivered through the labs' own words.
+By monitoring Anthropic, OpenAI, DeepMind, Meta, Qwen, and other frontier labs, we get a real-time feed of progress. The channel `#ai-latest` captures this: it's a health check on the state of AI, delivered through the labs' own words.
 
 ## Project Overview
 
-**Goal**: Slack bot that monitors AI frontier lab blogs, generates LLM-powered summaries, and posts them to `#agi-pulse`.
+**Goal**: Slack bot that monitors AI frontier lab blogs, generates LLM-powered summaries, and posts them to `#ai-latest`.
 
 **Key Features**:
-- Monitor 13 blog sources (Anthropic, OpenAI, DeepMind, Cursor, Simon Willison, Thinking Machines, Reflection AI, Cognition, Allen AI, Meta)
+- Monitor 14 blog sources (Anthropic, OpenAI, DeepMind, Meta, Qwen, Cursor, Allen AI, Cognition, Reflection AI, Simon Willison, Thinking Machines)
 - Content-type aware processing (technical vs announcement)
 - Three outputs per article:
   1. **Main post**: Haiku + one-liner (as clickable link) + Slack unfurl
   2. **Thread reply 1**: ELI5 explanation
-  3. **Thread reply 2**: Research Context ("The Scoop")
-- State tracking to avoid duplicate posts
+  3. **Thread reply 2**: Research Context ("The Scoop") with "Bottom line:" hot take
+- State tracking to avoid duplicate posts (persistent volume)
 - Alert system for broken scrapers (one alert per issue, no spam)
 - Seed mode for clean initialization
-- **Slack slash command** for manual article processing
+- **Slack slash command** `/ai-news` for manual article processing
+- **@mention Q&A** in threads - ask questions about articles with GPT-5.1 + web search
 
 ## Architecture
 
 ```
 ┌─────────────────┐
-│  Railway Cron   │──▶ GET /cron
+│ GitHub Actions  │──▶ GET /cron (every 6 hours)
 └─────────────────┘
                         ┌──────────────────────────────────┐
 ┌─────────────────┐     │     Bun HTTP Server (server.ts)  │
 │  Slack Command  │────▶│                                  │────▶ Slack
-│  /ai-signals    │     │  GET  /cron  → scrape all sources│
-└─────────────────┘     │  POST /slack → process one URL   │
-                        │  GET  /      → health check      │
-                        └──────────────────────────────────┘
+│  /ai-news       │     │  GET  /cron    → scrape all      │
+└─────────────────┘     │  POST /slack/* → slash command   │
+┌─────────────────┐     │  POST /slack/events → @mentions  │
+│  @mention       │────▶│  GET  /        → health check    │
+└─────────────────┘     └──────────────────────────────────┘
 ```
 
 ### Tech Stack
@@ -61,7 +63,7 @@ ai-news-bot/
 │   ├── server.ts          # HTTP server (Railway entry point)
 │   ├── index.ts           # Core logic + CLI mode
 │   ├── config.ts          # Environment variables
-│   ├── sources.ts         # 13 blog source definitions
+│   ├── sources.ts         # 14 blog source definitions
 │   ├── state.ts           # Seen articles + alert tracking
 │   ├── scraper.ts         # HTML/RSS fetching + Readability
 │   ├── summarizer.ts      # OpenAI GPT-5.1 (haiku + take + ELI5)
@@ -111,6 +113,11 @@ Each source has:
 | Cognition (Devin) | technical | `a[href^="/blog/"]:not(pagination)` | ✅ Working |
 | Allen AI | technical | `a[href^="/blog/"]` | ✅ Working |
 | Meta Engineering (AI) | technical | `a[href*="/202"]` (date pattern) | ✅ Working |
+| Qwen (Alibaba) | technical | `a[href*="/blog/"]:not(zh/page)` | ✅ Working |
+
+### Not Supported
+- **xAI (Grok)**: Blocked by Cloudflare bot protection
+- **DeepSeek**: JS-rendered SPA, requires headless browser
 
 ### Known Issues
 
@@ -217,56 +224,72 @@ State is stored in `seen_articles.json`:
 
 ### Cron Schedule
 
-Set up a Railway cron service to hit the `/cron` endpoint:
-- Every hour: `0 * * * *` → `curl -H "Authorization: Bearer $WEBHOOK_SECRET" https://your-app.railway.app/cron`
+Uses **GitHub Actions** (`.github/workflows/cron.yml`) to hit `/cron` every 6 hours. No Railway cron needed.
 
 ### Environment Variables
 
 ```
-ZAI_API_KEY=your_zai_key
+OPENAI_API_KEY=sk-...
 SLACK_BOT_TOKEN=xoxb-...
-SLACK_CHANNEL_ID=C09EMST4Z54
-SLACK_SIGNING_SECRET=your_slack_signing_secret
-WEBHOOK_SECRET=your_random_secret
-PORT=3000
+SLACK_CHANNEL_ID=C...
+STATE_FILE_PATH=/app/data/seen_articles.json
 ```
 
 ### Volume for State Persistence
 
-Attach a volume to persist `seen_articles.json` between runs.
+Attach a Railway volume:
+1. Go to service → Settings → Volumes
+2. Add volume, mount at `/app/data`
+3. Set `STATE_FILE_PATH=/app/data/seen_articles.json` in Variables
 
 ### First Deploy Checklist
 
-1. Deploy to Railway
-2. Set env vars
-3. Attach volume, mount at `/app/seen_articles.json`
-4. Seed via: `curl "https://your-app.railway.app/cron?seed=true" -H "Authorization: Bearer $WEBHOOK_SECRET"`
-5. Set up cron service
+1. Deploy to Railway (auto-deploys from GitHub)
+2. Set env vars (OPENAI_API_KEY, SLACK_BOT_TOKEN, SLACK_CHANNEL_ID)
+3. Attach volume at `/app/data`
+4. Add `STATE_FILE_PATH=/app/data/seen_articles.json`
+5. Seed via: `curl "https://your-app.railway.app/cron?seed=true"`
+6. GitHub Actions cron is already configured
 
 ## Slack Slash Command
 
 ### Setup
 
 1. Create a Slack app at https://api.slack.com/apps
-2. Add a slash command `/ai-news` pointing to `https://your-app.railway.app/slack`
-3. Copy the Signing Secret to `SLACK_SIGNING_SECRET` env var
-4. Install app to workspace
+2. Add slash command `/ai-news` → `https://your-app.railway.app/slack/commands`
+3. Add bot scopes: `chat:write`, `channels:history`, `app_mentions:read`
+4. Enable Event Subscriptions → `https://your-app.railway.app/slack/events`
+5. Subscribe to `app_mention` event
+6. Install app to workspace
 
 ### Usage
 
 ```
 /ai-news https://example.com/article
 /ai-news https://example.com/article announcement
+/ai-news pls process https://example.com/article
 ```
 
 - Default content type is `technical`
 - Add `announcement` at the end for product announcements
+- URL can be anywhere in the text
 
 The bot will:
 1. Respond immediately with "Processing..."
 2. Fetch, summarize, and research the article
-3. Post to the channel in the standard format
+3. Post to the channel where command was run
 4. Send you a confirmation
+
+## @mention Q&A
+
+In any article thread, @mention the bot to ask questions:
+
+```
+@ai-news-bot what's the main technical contribution?
+@ai-news-bot how does this compare to what Anthropic is doing?
+```
+
+Uses GPT-5.1 with web search. Personality: witty, direct, technical but accessible.
 
 ## Design Decisions
 
