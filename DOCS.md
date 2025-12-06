@@ -370,6 +370,14 @@ All LLM calls go through a shared OpenAI client (`src/openai.ts`) wrapped with B
 
 When `BRAINTRUST_API_KEY` is not set, the wrapper is a no-op and everything works normally.
 
+Logs are sent synchronously (`asyncFlush: false`) to ensure they're captured in serverless/Railway environments.
+
+### Testing
+
+```bash
+bun src/test-braintrust.ts
+```
+
 ### Resources
 
 - [Braintrust TypeScript SDK](https://www.braintrust.dev/docs/reference/sdks/typescript)

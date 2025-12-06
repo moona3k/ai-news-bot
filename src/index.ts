@@ -78,11 +78,6 @@ async function processSource(source: Source, state: State): Promise<State> {
     try {
       // Fetch article content
       const article = await fetchArticleContent(url);
-      if (!article) {
-        console.log(`    Failed to fetch content, skipping`);
-        continue;
-      }
-
       console.log(`    Title: ${article.title}`);
 
       // Generate summaries
@@ -184,10 +179,6 @@ export async function processManualUrl(
   try {
     // Fetch article content
     const article = await fetchArticleContent(url);
-    if (!article) {
-      return { success: false, message: 'Failed to fetch article content' };
-    }
-
     console.log(`Title: ${article.title}`);
 
     // Generate summaries
@@ -234,8 +225,9 @@ export async function processManualUrl(
       return { success: false, message: 'Failed to post to Slack' };
     }
   } catch (error) {
-    console.error(`Error processing ${url}:`, error);
-    return { success: false, message: `Error: ${error}` };
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Error processing ${url}:`, message);
+    return { success: false, message };
   }
 }
 

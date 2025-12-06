@@ -17,12 +17,13 @@ export interface ArticleContent {
 
 /**
  * Fetch a page with browser-like headers
+ * Throws an error with details if fetch fails
  */
-export async function fetchPage(url: string): Promise<string | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+export async function fetchPage(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
+  try {
     const response = await fetch(url, {
       headers: {
         'User-Agent': USER_AGENT,
@@ -35,14 +36,16 @@ export async function fetchPage(url: string): Promise<string | null> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-      return null;
+      throw new Error(`${response.status} ${response.statusText}`);
     }
 
     return await response.text();
   } catch (error) {
-    console.error(`Error fetching ${url}:`, error);
-    return null;
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw error;
   }
 }
 
@@ -89,8 +92,6 @@ export function extractArticleUrls(
  */
 export async function fetchRss(rssUrl: string): Promise<string[]> {
   const xml = await fetchPage(rssUrl);
-  if (!xml) return [];
-
   const $ = cheerio.load(xml, { xmlMode: true });
   const urls: string[] = [];
 
@@ -115,44 +116,42 @@ export async function fetchRss(rssUrl: string): Promise<string[]> {
  * Fetch article URLs from a source (handles both HTML and RSS)
  */
 export async function fetchArticleUrls(source: Source): Promise<string[]> {
-  if (source.rssUrl) {
-    console.log(`  Fetching RSS: ${source.rssUrl}`);
-    return fetchRss(source.rssUrl);
+  try {
+    if (source.rssUrl) {
+      console.log(`  Fetching RSS: ${source.rssUrl}`);
+      return await fetchRss(source.rssUrl);
+    }
+
+    console.log(`  Fetching index: ${source.indexUrl}`);
+    const html = await fetchPage(source.indexUrl);
+    return extractArticleUrls(html, source.articleSelector, source.baseUrl);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`  Failed to fetch ${source.name}: ${message}`);
+    return [];
   }
-
-  console.log(`  Fetching index: ${source.indexUrl}`);
-  const html = await fetchPage(source.indexUrl);
-  if (!html) return [];
-
-  return extractArticleUrls(html, source.articleSelector, source.baseUrl);
 }
 
 /**
  * Fetch and extract clean article content using Readability
+ * Throws an error with details if fetch or parse fails
  */
-export async function fetchArticleContent(url: string): Promise<ArticleContent | null> {
+export async function fetchArticleContent(url: string): Promise<ArticleContent> {
   const html = await fetchPage(url);
-  if (!html) return null;
 
-  try {
-    // Use linkedom to create a DOM for Readability
-    const { document } = parseHTML(html);
+  // Use linkedom to create a DOM for Readability
+  const { document } = parseHTML(html);
 
-    const reader = new Readability(document as any);
-    const article = reader.parse();
+  const reader = new Readability(document as any);
+  const article = reader.parse();
 
-    if (!article) {
-      console.warn(`Readability failed to parse: ${url}`);
-      return null;
-    }
-
-    return {
-      title: article.title || 'Untitled',
-      content: article.textContent || '',
-      excerpt: article.excerpt || undefined,
-    };
-  } catch (error) {
-    console.error(`Error parsing article ${url}:`, error);
-    return null;
+  if (!article) {
+    throw new Error('Could not parse article content');
   }
+
+  return {
+    title: article.title || 'Untitled',
+    content: article.textContent || '',
+    excerpt: article.excerpt || undefined,
+  };
 }
