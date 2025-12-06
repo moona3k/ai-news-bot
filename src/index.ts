@@ -195,11 +195,12 @@ export async function processManualUrl(
 
     // Post to Slack
     console.log(`Posting to Slack...`);
+    const domain = new URL(url).hostname.replace('www.', '');
     const threadTs = await postArticleThread(
       {
         title: article.title,
         url,
-        source: 'Manual',
+        source: domain,
         contentType,
       },
       summaries,
