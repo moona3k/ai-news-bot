@@ -31,6 +31,19 @@ function getSlackClient(): WebClient {
 async function handleMentionQuestion(channelId: string, threadTs: string, question: string): Promise<void> {
   const client = getSlackClient();
 
+  // Post "Thinking..." message immediately (publicly visible)
+  let thinkingTs: string | undefined;
+  try {
+    const thinkingMsg = await client.chat.postMessage({
+      channel: channelId,
+      thread_ts: threadTs,
+      text: '🤔 Thinking...',
+    });
+    thinkingTs = thinkingMsg.ts;
+  } catch (e) {
+    console.error('Failed to post thinking message:', e);
+  }
+
   try {
     // Get thread messages for context
     const threadResult = await client.conversations.replies({
@@ -111,23 +124,60 @@ Question: ${question}`;
       answer = 'Sorry, I could not generate a response.';
     }
 
-    // Convert to Slack formatting and post reply in thread
+    // Convert to Slack formatting
     const slackAnswer = toSlackMarkdown(answer);
-    await client.chat.postMessage({
-      channel: channelId,
-      thread_ts: threadTs,
-      text: slackAnswer,
-    });
+
+    // Update "Thinking..." message with final answer, or post new if update fails
+    if (thinkingTs) {
+      try {
+        await client.chat.update({
+          channel: channelId,
+          ts: thinkingTs,
+          text: slackAnswer,
+        });
+      } catch (e) {
+        console.error('Failed to update thinking message, posting new:', e);
+        await client.chat.postMessage({
+          channel: channelId,
+          thread_ts: threadTs,
+          text: slackAnswer,
+        });
+      }
+    } else {
+      await client.chat.postMessage({
+        channel: channelId,
+        thread_ts: threadTs,
+        text: slackAnswer,
+      });
+    }
 
   } catch (error) {
     console.error('Error handling mention:', error);
 
-    // Post error message
-    await client.chat.postMessage({
-      channel: channelId,
-      thread_ts: threadTs,
-      text: `Sorry, I encountered an error: ${error}`,
-    });
+    const errorText = `Sorry, I encountered an error: ${error}`;
+
+    // Update "Thinking..." with error, or post new if update fails
+    if (thinkingTs) {
+      try {
+        await client.chat.update({
+          channel: channelId,
+          ts: thinkingTs,
+          text: errorText,
+        });
+      } catch (e) {
+        await client.chat.postMessage({
+          channel: channelId,
+          thread_ts: threadTs,
+          text: errorText,
+        });
+      }
+    } else {
+      await client.chat.postMessage({
+        channel: channelId,
+        thread_ts: threadTs,
+        text: errorText,
+      });
+    }
   }
 }
 
