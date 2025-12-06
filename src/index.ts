@@ -7,7 +7,7 @@ import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, 
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
-import { postArticleThread, sendMessage, postImageReply, postCartoonError } from './slack';
+import { postArticleThread, sendMessage, postImageReply, postCartoonError, postThreadMessage, deleteMessage } from './slack';
 import { generateArticleCartoon, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
