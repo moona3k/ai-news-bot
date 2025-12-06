@@ -1,4 +1,4 @@
-// AI Signals - HTTP Server
+// AI News Bot - HTTP Server
 // Provides /cron and /slack endpoints for Railway deployment
 
 import { createHmac, timingSafeEqual } from 'crypto';
@@ -120,7 +120,7 @@ const server = Bun.serve({
       if (!articleUrl || !articleUrl.startsWith('http')) {
         return new Response(JSON.stringify({
           response_type: 'ephemeral',
-          text: 'Usage: /ai-signals <url> [announcement]\nExample: /ai-signals https://example.com/article',
+          text: 'Usage: /ai-news <url> [announcement]\nExample: /ai-news https://example.com/article',
         }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -159,7 +159,7 @@ const server = Bun.serve({
 // Initialize config on startup
 loadConfig();
 
-console.log(`🚀 AI Signals server running on port ${server.port}`);
+console.log(`🚀 AI News Bot server running on port ${server.port}`);
 console.log(`   POST /slack - Slack slash command`);
 console.log(`   GET  /cron  - Trigger scheduled scrape`);
 console.log(`   GET  /      - Health check`);

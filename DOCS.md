@@ -1,4 +1,4 @@
-# AI Signals - Documentation
+# AI News Bot - Documentation
 
 > Last updated: 2025-12-05
 > Status: Production ready
@@ -49,7 +49,7 @@ Everything runs on **one OpenAI API key**:
 ## Project Structure
 
 ```
-ai-signals/
+ai-news-bot/
 ├── src/
 │   ├── server.ts          # HTTP server (Railway entry point)
 │   ├── index.ts           # Core logic + CLI mode
@@ -241,15 +241,15 @@ Attach a volume to persist `seen_articles.json` between runs.
 ### Setup
 
 1. Create a Slack app at https://api.slack.com/apps
-2. Add a slash command `/ai-signals` pointing to `https://your-app.railway.app/slack`
+2. Add a slash command `/ai-news` pointing to `https://your-app.railway.app/slack`
 3. Copy the Signing Secret to `SLACK_SIGNING_SECRET` env var
 4. Install app to workspace
 
 ### Usage
 
 ```
-/ai-signals https://example.com/article
-/ai-signals https://example.com/article announcement
+/ai-news https://example.com/article
+/ai-news https://example.com/article announcement
 ```
 
 - Default content type is `technical`

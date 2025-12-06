@@ -1,4 +1,4 @@
-// AI Signals - Main orchestration
+// AI News Bot - Main orchestration
 // Monitors AI lab blogs, generates summaries, posts to Slack
 
 import { loadConfig } from './config';
@@ -227,10 +227,10 @@ export async function processManualUrl(
  */
 export async function runScrapeCheck(seedMode = false): Promise<{ processed: number; failed: number }> {
   if (seedMode) {
-    console.log('=== AI Signals SEED MODE ===');
+    console.log('=== AI News Bot SEED MODE ===');
     console.log('Marking all current articles as seen (no LLM calls, no Slack posts)');
   } else {
-    console.log('=== AI Signals Starting ===');
+    console.log('=== AI News Bot Starting ===');
   }
   console.log(`Time: ${new Date().toISOString()}`);
 
@@ -271,7 +271,7 @@ export async function runScrapeCheck(seedMode = false): Promise<{ processed: num
     console.log('\n=== Seed Complete ===');
     console.log(`Seeded: ${processed} articles`);
   } else {
-    console.log('\n=== AI Signals Complete ===');
+    console.log('\n=== AI News Bot Complete ===');
     console.log(`Processed: ${processed} new articles`);
   }
   console.log(`Failed sources: ${failed}`);

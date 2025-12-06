@@ -1,5 +1,5 @@
 {
-  "name": "ai-signals",
+  "name": "ai-news-bot",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
