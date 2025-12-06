@@ -385,7 +385,7 @@ const server = Bun.serve({
 
       const startDotAnimation = () => {
         animationInterval = setInterval(async () => {
-          if (!processingTs) return;
+          if (!processingTs || !animationInterval) return;
           dotCount = (dotCount % 3) + 1;
           const dots = '.'.repeat(dotCount);
           try {
@@ -394,10 +394,15 @@ const server = Bun.serve({
               ts: processingTs,
               text: `:thinking_party: Thinking${dots}`,
             });
-          } catch {
-            // Ignore update errors (message may have been replaced)
+          } catch (err: any) {
+            // Stop animation if message was deleted/replaced or rate limited
+            if (err?.data?.error === 'message_not_found' || err?.data?.error === 'cant_update_message') {
+              clearInterval(animationInterval);
+              animationInterval = undefined;
+            }
+            // Otherwise ignore and keep trying
           }
-        }, 1500);
+        }, 2000);
       };
 
       const stopDotAnimation = () => {
