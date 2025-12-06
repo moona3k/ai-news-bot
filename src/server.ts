@@ -103,7 +103,7 @@ const server = Bun.serve({
     }
 
     // Slack slash command endpoint
-    if (url.pathname === '/slack' && req.method === 'POST') {
+    if ((url.pathname === '/slack' || url.pathname === '/slack/commands') && req.method === 'POST') {
       const body = await req.text();
       const timestamp = req.headers.get('X-Slack-Request-Timestamp') || '';
       const signature = req.headers.get('X-Slack-Signature') || '';
