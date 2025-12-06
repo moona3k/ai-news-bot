@@ -29,7 +29,7 @@ async function generateAndPostCartoon(
 ): Promise<void> {
   const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
   if (result) {
-    const caption = `🎨 ${result.caption}`;
+    const caption = `🎨 *_${result.caption}_* 🎨`;
     await postImageReply(result.image, threadTs, channelId, caption);
   }
 }
