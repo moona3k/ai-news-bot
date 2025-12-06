@@ -1,0 +1,13 @@
+name: Scheduled Scrape
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scrape
+        run: curl -s https://ai-news-bot-production.up.railway.app/cron
