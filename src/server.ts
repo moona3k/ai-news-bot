@@ -29,7 +29,7 @@ async function handleMentionQuestion(channelId: string, threadTs: string, questi
 
     const messages = threadResult.messages || [];
 
-    // Find the original article URL from the thread
+    // Find the original article URL and build thread context
     let articleUrl: string | null = null;
     let threadContext = '';
 
@@ -50,32 +50,50 @@ async function handleMentionQuestion(channelId: string, threadTs: string, questi
 Thread context (previous messages):
 ${threadContext}
 
-${articleUrl ? `Article URL: ${articleUrl}` : ''}
+${articleUrl ? `Original article URL: ${articleUrl}` : ''}
 
 User question: ${question}
 
-Answer concisely and helpfully. If you don't have enough context to answer, say so.`;
+Answer concisely and helpfully. Use web search if needed to provide accurate, up-to-date information. If you don't have enough context to answer, say so.`;
 
-    // Call OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call OpenAI Responses API with web search
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
+        model: 'gpt-4.1',
+        input: prompt,
+        tools: [{ type: 'web_search' }],
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI error: ${response.status}`);
+      const err = await response.text();
+      throw new Error(`OpenAI Responses API error ${response.status}: ${err}`);
     }
 
     const data = await response.json();
-    const answer = data.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+
+    // Extract text from response output
+    let answer = '';
+    if (data.output) {
+      for (const item of data.output) {
+        if (item.type === 'message' && item.content) {
+          for (const content of item.content) {
+            if (content.type === 'output_text') {
+              answer += content.text;
+            }
+          }
+        }
+      }
+    }
+
+    if (!answer) {
+      answer = 'Sorry, I could not generate a response.';
+    }
 
     // Post reply in thread
     await client.chat.postMessage({
