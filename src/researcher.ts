@@ -67,58 +67,22 @@ ${articleContent.slice(0, 5000)}
 
 Search the web for context and provide your research findings:`;
 
-  try {
-    const response = await openai.responses.create({
-      model: 'gpt-5.1',
-      input: fullPrompt,
-      tools: [{ type: 'web_search' }],
-    });
+  const response = await openai.responses.create({
+    model: 'gpt-5.1',
+    input: fullPrompt,
+    tools: [{ type: 'web_search' }],
+  });
 
-    const result = extractResponseText(response);
+  const result = extractResponseText(response);
 
-    // Log token usage if available
-    if (response.usage) {
-      console.log(`  Research completed (${response.usage.total_tokens} tokens)`);
-    }
-
-    return result || 'Research could not be completed.';
-  } catch (error) {
-    console.error('Agentic research failed:', error);
-    return runSimpleResearch(articleContent, articleTitle, contentType);
+  // Log token usage if available
+  if (response.usage) {
+    console.log(`  Research completed (${response.usage.total_tokens} tokens)`);
   }
-}
 
-/**
- * Simple research without web search (fallback)
- * Uses GPT for context based on training knowledge
- */
-export async function runSimpleResearch(
-  articleContent: string,
-  articleTitle: string,
-  contentType: ContentType
-): Promise<string> {
-  const prompt = contentType === 'technical'
-    ? RESEARCH_PROMPTS.technical.replace('Search the web for context', 'Based on what you know, provide context')
-    : RESEARCH_PROMPTS.announcement.replace('Search the web to verify claims and provide context', 'Based on what you know, provide context');
-
-  const fullPrompt = `${prompt}
-
-(Note: No web search - use your training knowledge)
-
-Article Title: "${articleTitle}"
-
-Article Content (excerpt):
-${articleContent.slice(0, 5000)}`;
-
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-5.1-chat-latest',
-      messages: [{ role: 'user', content: fullPrompt }],
-    });
-
-    return completion.choices[0]?.message?.content || 'Research context could not be generated.';
-  } catch (error) {
-    console.error('Simple research failed:', error);
-    return `*Research unavailable* - Could not generate context for "${articleTitle}".`;
+  if (!result) {
+    throw new Error('Research returned empty response');
   }
+
+  return result;
 }

@@ -6,7 +6,7 @@ import { SOURCES, type Source, type ContentType } from './sources';
 import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, markSourceAlerted, clearSourceAlert, type State } from './state';
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
-import { runAgenticResearch, runSimpleResearch } from './researcher';
+import { runAgenticResearch } from './researcher';
 import { postArticleThread, sendMessage } from './slack';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
@@ -87,23 +87,13 @@ async function processSource(source: Source, state: State): Promise<State> {
         source.contentType
       );
 
-      // Run agentic research (with fallback)
+      // Run agentic research
       console.log(`    Running research...`);
-      let researchContext: string;
-      try {
-        researchContext = await runAgenticResearch(
-          article.content,
-          article.title,
-          source.contentType
-        );
-      } catch (e) {
-        console.log(`    Agentic research failed, using simple fallback`);
-        researchContext = await runSimpleResearch(
-          article.content,
-          article.title,
-          source.contentType
-        );
-      }
+      const researchContext = await runAgenticResearch(
+        article.content,
+        article.title,
+        source.contentType
+      );
 
       // Post to Slack
       console.log(`    Posting to Slack...`);
@@ -184,15 +174,9 @@ export async function processManualUrl(
     // Generate summaries
     const summaries = await generateSummaries(article.content, article.title, contentType);
 
-    // Run agentic research (with fallback)
+    // Run agentic research
     console.log(`Running research...`);
-    let researchContext: string;
-    try {
-      researchContext = await runAgenticResearch(article.content, article.title, contentType);
-    } catch (e) {
-      console.log(`Agentic research failed, using simple fallback`);
-      researchContext = await runSimpleResearch(article.content, article.title, contentType);
-    }
+    const researchContext = await runAgenticResearch(article.content, article.title, contentType);
 
     // Post to Slack
     console.log(`Posting to Slack...`);
