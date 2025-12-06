@@ -114,7 +114,13 @@ const server = Bun.serve({
       }
 
       const payload = parseSlackPayload(body);
-      const articleUrl = payload.text.trim();
+      let articleUrl = payload.text.trim();
+
+      // Handle Slack's URL formatting: <https://example.com|example.com> -> https://example.com
+      const slackUrlMatch = articleUrl.match(/<([^|>]+)(?:\|[^>]+)?>/);
+      if (slackUrlMatch) {
+        articleUrl = slackUrlMatch[1];
+      }
 
       // Validate URL
       if (!articleUrl || !articleUrl.startsWith('http')) {
