@@ -2,7 +2,7 @@
 // Monitors AI lab blogs, generates summaries, posts to Slack
 
 import { loadConfig } from './config';
-import { SOURCES, type Source } from './sources';
+import { SOURCES, type Source, type ContentType } from './sources';
 import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, markSourceAlerted, clearSourceAlert, type State } from './state';
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
@@ -10,7 +10,6 @@ import { runAgenticResearch, runSimpleResearch } from './researcher';
 import { postArticleThread, sendMessage } from './slack';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
-const SEED_MODE = process.argv.includes('--seed');
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -146,8 +145,88 @@ async function processSource(source: Source, state: State): Promise<State> {
   return currentState;
 }
 
-async function main() {
-  if (SEED_MODE) {
+/**
+ * Process a single URL manually (for Slack slash command)
+ */
+export async function processManualUrl(
+  url: string,
+  contentType: ContentType = 'technical'
+): Promise<{ success: boolean; message: string }> {
+  console.log(`\n=== Processing Manual URL ===`);
+  console.log(`URL: ${url}`);
+  console.log(`Content Type: ${contentType}`);
+
+  try {
+    loadConfig();
+  } catch (error) {
+    return { success: false, message: `Configuration error: ${error}` };
+  }
+
+  let state = await loadState();
+
+  // Check if already processed
+  if (isArticleSeen(state, url)) {
+    return { success: false, message: 'Article already processed' };
+  }
+
+  try {
+    // Fetch article content
+    const article = await fetchArticleContent(url);
+    if (!article) {
+      return { success: false, message: 'Failed to fetch article content' };
+    }
+
+    console.log(`Title: ${article.title}`);
+
+    // Generate summaries
+    const summaries = await generateSummaries(article.content, article.title, contentType);
+
+    // Run agentic research (with fallback)
+    console.log(`Running research...`);
+    let researchContext: string;
+    try {
+      researchContext = await runAgenticResearch(article.content, article.title, contentType);
+    } catch (e) {
+      console.log(`Agentic research failed, using simple fallback`);
+      researchContext = await runSimpleResearch(article.content, article.title, contentType);
+    }
+
+    // Post to Slack
+    console.log(`Posting to Slack...`);
+    const threadTs = await postArticleThread(
+      {
+        title: article.title,
+        url,
+        source: 'Manual',
+        contentType,
+      },
+      summaries,
+      researchContext
+    );
+
+    if (threadTs) {
+      // Mark as seen
+      state = markArticleSeen(state, url, {
+        title: article.title,
+        source: 'Manual',
+        contentType,
+      });
+      await saveState(state);
+      return { success: true, message: `Posted: ${article.title}` };
+    } else {
+      return { success: false, message: 'Failed to post to Slack' };
+    }
+  } catch (error) {
+    console.error(`Error processing ${url}:`, error);
+    return { success: false, message: `Error: ${error}` };
+  }
+}
+
+/**
+ * Run the scheduled scrape check (for cron)
+ */
+export async function runScrapeCheck(seedMode = false): Promise<{ processed: number; failed: number }> {
+  if (seedMode) {
     console.log('=== AI Signals SEED MODE ===');
     console.log('Marking all current articles as seen (no LLM calls, no Slack posts)');
   } else {
@@ -155,25 +234,22 @@ async function main() {
   }
   console.log(`Time: ${new Date().toISOString()}`);
 
-  // Load config (validates environment variables)
   try {
     loadConfig();
   } catch (error) {
     console.error('Configuration error:', error);
-    process.exit(1);
+    throw error;
   }
 
-  // Load state
   let state = await loadState();
   console.log(`Loaded state: ${Object.keys(state.seen).length} articles seen`);
 
   let processed = 0;
   let failed = 0;
 
-  // Process each source
   for (const source of SOURCES) {
     try {
-      const newState = SEED_MODE
+      const newState = seedMode
         ? await seedSource(source, state)
         : await processSource(source, state);
       const newArticles = Object.keys(newState.seen).length - Object.keys(state.seen).length;
@@ -182,17 +258,16 @@ async function main() {
     } catch (error) {
       console.error(`Error processing ${source.name}:`, error);
       failed++;
-      if (!SEED_MODE) {
+      if (!seedMode) {
         await sendMessage(`🚨 *Scraper Error*: ${source.name} failed completely.\n\`\`\`${error}\`\`\``);
       }
     }
   }
 
-  // Save state
   await saveState(state);
   console.log(`\nSaved state: ${Object.keys(state.seen).length} articles seen`);
 
-  if (SEED_MODE) {
+  if (seedMode) {
     console.log('\n=== Seed Complete ===');
     console.log(`Seeded: ${processed} articles`);
   } else {
@@ -200,10 +275,16 @@ async function main() {
     console.log(`Processed: ${processed} new articles`);
   }
   console.log(`Failed sources: ${failed}`);
+
+  return { processed, failed };
 }
 
-// Run
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+// CLI mode - run directly if not imported
+const isMainModule = import.meta.main;
+if (isMainModule) {
+  const SEED_MODE = process.argv.includes('--seed');
+  runScrapeCheck(SEED_MODE).catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}

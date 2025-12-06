@@ -8,7 +8,7 @@
 **Goal**: Slack bot that monitors AI frontier lab blogs, generates LLM-powered summaries, and posts them to a company Slack channel.
 
 **Key Features**:
-- Monitor 9 blog sources (Anthropic, OpenAI, DeepMind, Cursor, Simon Willison, Thinking Machines)
+- Monitor 10 blog sources (Anthropic, OpenAI, DeepMind, Cursor, Simon Willison, Thinking Machines, Reflection AI)
 - Content-type aware processing (technical vs announcement)
 - Three outputs per article:
   1. **Main post**: Haiku + one-liner (as clickable link) + Slack unfurl
@@ -17,15 +17,21 @@
 - State tracking to avoid duplicate posts
 - Alert system for broken scrapers (one alert per issue, no spam)
 - Seed mode for clean initialization
+- **Slack slash command** for manual article processing
 
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌─────────┐
-│  Cron/Timer │────▶│  Scrape URLs │────▶│  LLM (GPT)  │────▶│  Slack  │
-│  (trigger)  │     │  (9 sources) │     │  Summarize  │     │  Post   │
-└─────────────┘     └──────────────┘     │  Research   │     └─────────┘
-                                         └─────────────┘
+┌─────────────────┐
+│  Railway Cron   │──▶ GET /cron
+└─────────────────┘
+                        ┌──────────────────────────────────┐
+┌─────────────────┐     │     Bun HTTP Server (server.ts)  │
+│  Slack Command  │────▶│                                  │────▶ Slack
+│  /ai-signals    │     │  GET  /cron  → scrape all sources│
+└─────────────────┘     │  POST /slack → process one URL   │
+                        │  GET  /      → health check      │
+                        └──────────────────────────────────┘
 ```
 
 ### Tech Stack
@@ -45,9 +51,10 @@ Everything runs on **one OpenAI API key**:
 ```
 ai-signals/
 ├── src/
-│   ├── index.ts           # Main orchestration + seed mode
+│   ├── server.ts          # HTTP server (Railway entry point)
+│   ├── index.ts           # Core logic + CLI mode
 │   ├── config.ts          # Environment variables
-│   ├── sources.ts         # 9 blog source definitions
+│   ├── sources.ts         # 10 blog source definitions
 │   ├── state.ts           # Seen articles + alert tracking
 │   ├── scraper.ts         # HTML/RSS fetching + Readability
 │   ├── summarizer.ts      # OpenAI GPT-5.1 (haiku + take + ELI5)
@@ -63,11 +70,12 @@ ai-signals/
 ## Commands
 
 ```bash
-# First run (seed mode) - marks all existing articles as seen, no LLM calls
-bun src/index.ts --seed
+# Start HTTP server (for Railway)
+bun src/server.ts
 
-# Normal run - process new articles only
-bun src/index.ts
+# CLI mode (for local testing)
+bun src/index.ts           # Normal run
+bun src/index.ts --seed    # Seed mode (mark all as seen)
 
 # Run tests
 bun test
@@ -92,6 +100,7 @@ Each source has:
 | Cursor Blog | technical | `a[href^="/blog/"]:not(topic)` | ✅ Working |
 | Simon Willison | technical | RSS: `/tags/ai.atom` | ✅ Working (AI-only feed) |
 | Thinking Machines | technical | `a[href*="/blog/"]` | ✅ Working |
+| Reflection AI | technical | `a[href^="/blog/"]:not(...)` | ✅ Working |
 
 ### OpenAI Unfurl Issue
 
@@ -188,24 +197,26 @@ State is stored in `seen_articles.json`:
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "bun src/index.ts",
-    "restartPolicyType": "NEVER"
+    "startCommand": "bun src/server.ts",
+    "restartPolicyType": "ON_FAILURE"
   }
 }
 ```
 
 ### Cron Schedule
 
-Set in Railway dashboard:
-- Every hour: `0 * * * *`
-- Every 4 hours: `0 */4 * * *`
+Set up a Railway cron service to hit the `/cron` endpoint:
+- Every hour: `0 * * * *` → `curl -H "Authorization: Bearer $WEBHOOK_SECRET" https://your-app.railway.app/cron`
 
 ### Environment Variables
 
 ```
-OPENAI_API_KEY=sk-...
+ZAI_API_KEY=your_zai_key
 SLACK_BOT_TOKEN=xoxb-...
 SLACK_CHANNEL_ID=C09EMST4Z54
+SLACK_SIGNING_SECRET=your_slack_signing_secret
+WEBHOOK_SECRET=your_random_secret
+PORT=3000
 ```
 
 ### Volume for State Persistence
@@ -217,8 +228,33 @@ Attach a volume to persist `seen_articles.json` between runs.
 1. Deploy to Railway
 2. Set env vars
 3. Attach volume, mount at `/app/seen_articles.json`
-4. SSH in and run `bun src/index.ts --seed` to initialize
-5. Enable cron schedule
+4. Seed via: `curl "https://your-app.railway.app/cron?seed=true" -H "Authorization: Bearer $WEBHOOK_SECRET"`
+5. Set up cron service
+
+## Slack Slash Command
+
+### Setup
+
+1. Create a Slack app at https://api.slack.com/apps
+2. Add a slash command `/ai-signals` pointing to `https://your-app.railway.app/slack`
+3. Copy the Signing Secret to `SLACK_SIGNING_SECRET` env var
+4. Install app to workspace
+
+### Usage
+
+```
+/ai-signals https://example.com/article
+/ai-signals https://example.com/article announcement
+```
+
+- Default content type is `technical`
+- Add `announcement` at the end for product announcements
+
+The bot will:
+1. Respond immediately with "Processing..."
+2. Fetch, summarize, and research the article
+3. Post to the channel in the standard format
+4. Send you a confirmation
 
 ## Design Decisions
 
