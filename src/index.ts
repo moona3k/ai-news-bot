@@ -28,7 +28,7 @@ async function generateAndPostCartoon(
   channelId?: string
 ): Promise<void> {
   // Post progress message with animated dots
-  const progressTs = await postThreadMessage(':dancing_penguin: Drawing comic strip.', threadTs, channelId);
+  const progressTs = await postThreadMessage(':party_sunglasses_blob: Drawing comic strip.', threadTs, channelId);
 
   let animationStopped = false;
   let dotCount = 1;
@@ -38,7 +38,7 @@ async function generateAndPostCartoon(
     if (animationStopped || !progressTs) return;
     dotCount = (dotCount % 3) + 1;
     const dots = '.'.repeat(dotCount);
-    updateMessage(progressTs, `:dancing_penguin: Drawing comic strip${dots}`, channelId).finally(() => {
+    updateMessage(progressTs, `:party_sunglasses_blob: Drawing comic strip${dots}`, channelId).finally(() => {
       if (!animationStopped) {
         animationTimeout = setTimeout(animateDots, 2000);
       }
