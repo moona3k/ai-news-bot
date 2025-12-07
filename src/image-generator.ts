@@ -7,10 +7,14 @@
 // The script content may need adjustment to avoid triggering safety filters.
 
 import { openai } from './openai';
-import { Attachment, traced } from 'braintrust';
-import { GoogleGenAI } from '@google/genai';
+import { Attachment, traced, wrapGoogleGenAI } from 'braintrust';
+import * as googleGenAI from '@google/genai';
 import { getConfig } from './config';
+
 import type { ContentType } from './sources';
+
+// Wrap Google GenAI for auto-tracing in Braintrust
+const { GoogleGenAI } = wrapGoogleGenAI(googleGenAI);
 
 // ============================================================
 // Step 1: Script Generation (Responses API)
@@ -229,60 +233,28 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Generate image using OpenAI gpt-image-1
- * Traced in Braintrust for observability
+ * Note: wrapOpenAI auto-traces this call to Braintrust
  */
 async function generateImageWithOpenAI(prompt: string): Promise<{ image: string } | { error: string }> {
-  return traced(
-    async (span) => {
-      const startTime = Date.now();
+  const result = await openai.images.generate({
+    model: 'gpt-image-1',
+    prompt,
+    size: '1024x1024',
+    n: 1,
+  });
 
-      const result = await openai.images.generate({
-        model: 'gpt-image-1',
-        prompt,
-        size: '1024x1024',
-        n: 1,
-      });
+  const imageBase64 = result.data?.[0]?.b64_json;
 
-      const durationMs = Date.now() - startTime;
-      const imageBase64 = result.data?.[0]?.b64_json;
+  if (!imageBase64) {
+    return { error: 'No image data returned' };
+  }
 
-      if (!imageBase64) {
-        span.log({
-          output: { error: 'No image data returned' },
-          metrics: { duration_ms: durationMs },
-        });
-        return { error: 'No image data returned' };
-      }
-
-      // Log success with image attachment
-      const imageBuffer = Buffer.from(imageBase64, 'base64');
-      span.log({
-        output: {
-          image: new Attachment({
-            data: imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength),
-            filename: 'openai-image.png',
-            contentType: 'image/png',
-          }),
-        },
-        metrics: { duration_ms: durationMs },
-      });
-
-      return { image: imageBase64 };
-    },
-    {
-      name: 'generateImageWithOpenAI',
-      type: 'llm',
-      event: {
-        input: [{ role: 'user', content: prompt }],
-        metadata: { model: 'gpt-image-1' },
-      },
-    }
-  );
+  return { image: imageBase64 };
 }
 
 /**
  * Generate image using Gemini gemini-3-pro-image-preview (Nano Banana Pro)
- * Traced in Braintrust for observability
+ * Note: wrapGoogleGenAI auto-traces this call to Braintrust
  */
 async function generateImageWithGemini(prompt: string): Promise<{ image: string } | { error: string }> {
   const config = getConfig();
@@ -291,64 +263,29 @@ async function generateImageWithGemini(prompt: string): Promise<{ image: string 
     return { error: 'GEMINI_API_KEY not configured' };
   }
 
-  return traced(
-    async (span) => {
-      const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
-      const startTime = Date.now();
+  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
-        contents: prompt,
-        config: {
-          responseModalities: ['TEXT', 'IMAGE'],
-        },
-      });
-
-      const durationMs = Date.now() - startTime;
-
-      // Extract image from response
-      const parts = response.candidates?.[0]?.content?.parts;
-      if (!parts) {
-        span.log({
-          output: { error: 'No response parts received' },
-          metrics: { duration_ms: durationMs },
-        });
-        return { error: 'No response parts received' };
-      }
-
-      for (const part of parts) {
-        if (part.inlineData?.data) {
-          // Log success with image attachment
-          const imageBuffer = Buffer.from(part.inlineData.data, 'base64');
-          span.log({
-            output: {
-              image: new Attachment({
-                data: imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength),
-                filename: 'gemini-image.png',
-                contentType: part.inlineData.mimeType || 'image/png',
-              }),
-            },
-            metrics: { duration_ms: durationMs },
-          });
-          return { image: part.inlineData.data };
-        }
-      }
-
-      span.log({
-        output: { error: 'No image in response' },
-        metrics: { duration_ms: durationMs },
-      });
-      return { error: 'No image in response' };
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: prompt,
+    config: {
+      responseModalities: ['TEXT', 'IMAGE'],
     },
-    {
-      name: 'generateImageWithGemini',
-      type: 'llm',
-      event: {
-        input: [{ role: 'user', content: prompt }],
-        metadata: { model: 'gemini-3-pro-image-preview' },
-      },
+  });
+
+  // Extract image from response
+  const parts = response.candidates?.[0]?.content?.parts;
+  if (!parts) {
+    return { error: 'No response parts received' };
+  }
+
+  for (const part of parts) {
+    if (part.inlineData?.data) {
+      return { image: part.inlineData.data };
     }
-  );
+  }
+
+  return { error: 'No image in response' };
 }
 
 /**
