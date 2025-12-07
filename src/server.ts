@@ -384,16 +384,16 @@ const server = Bun.serve({
       let animationStopped = false;
       let frameIndex = 0;
 
-      // Rocket animation: traveling from Earth to Moon
+      // Rocket animation: traveling from Earth to Moon (moon fills up as rocket approaches)
       const frames = [
-        '🌍 · · · · · · · · 🌙',
-        '🌍 · :rocket-animated: · · · · · · 🌙',
-        '🌍 · · :rocket-animated: · · · · · 🌙',
-        '🌍 · · · :rocket-animated: · · · · 🌙',
-        '🌍 · · · · :rocket-animated: · · · 🌙',
-        '🌍 · · · · · :rocket-animated: · · 🌙',
-        '🌍 · · · · · · :rocket-animated: · 🌙',
-        '🌍 · · · · · · · :rocket-animated: 🌙',
+        '🌍 · · · · · · · · 🌑',
+        '🌍 · :rocket-animated: · · · · · · 🌒',
+        '🌍 · · :rocket-animated: · · · · · 🌒',
+        '🌍 · · · :rocket-animated: · · · · 🌓',
+        '🌍 · · · · :rocket-animated: · · · 🌓',
+        '🌍 · · · · · :rocket-animated: · · 🌔',
+        '🌍 · · · · · · :rocket-animated: · 🌔',
+        '🌍 · · · · · · · :rocket-animated: 🌕',
       ];
       const ANIMATION_INTERVAL_MS = 2000; // Update every 2s
 
