@@ -78,7 +78,7 @@ async function generateAndPostInfographic(
     const caption = `📊 *${result.headline}*\n*_${result.bottomLine}_*`;
     await postImageReply(result.image, threadTs, channelId, caption);
     // Wait for Slack to fully process the image before continuing
-    await sleep(2000);
+    await sleep(3000);
   } else {
     // Log error but don't post to thread (infographic is supplementary)
     console.error(`    Infographic generation failed: ${result.error}`);
