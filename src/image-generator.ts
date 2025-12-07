@@ -275,14 +275,23 @@ const generateImageWithOpenAI = wrapTraced(async function generateImageWithOpenA
 
 /**
  * Generate image using Gemini gemini-3-pro-image-preview (Nano Banana Pro)
- * Note: wrapGoogleGenAI auto-traces this call to Braintrust
+ * Manually traced to log image as Attachment for Braintrust UI rendering
  */
-async function generateImageWithGemini(prompt: string): Promise<{ image: string } | { error: string }> {
+const generateImageWithGemini = wrapTraced(async function generateImageWithGemini(
+  prompt: string
+): Promise<{ image: string } | { error: string }> {
   const config = getConfig();
 
   if (!config.geminiApiKey) {
+    currentSpan().log({ output: { error: 'GEMINI_API_KEY not configured' } });
     return { error: 'GEMINI_API_KEY not configured' };
   }
+
+  // Log input
+  currentSpan().log({
+    input: prompt,
+    metadata: { model: 'gemini-3-pro-image-preview' },
+  });
 
   const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
 
@@ -297,17 +306,30 @@ async function generateImageWithGemini(prompt: string): Promise<{ image: string 
   // Extract image from response
   const parts = response.candidates?.[0]?.content?.parts;
   if (!parts) {
+    currentSpan().log({ output: { error: 'No response parts received' } });
     return { error: 'No response parts received' };
   }
 
   for (const part of parts) {
     if (part.inlineData?.data) {
+      // Log output with image attachment
+      const imageBuffer = Buffer.from(part.inlineData.data, 'base64');
+      currentSpan().log({
+        output: {
+          image: new Attachment({
+            data: imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength),
+            filename: 'gemini-image.png',
+            contentType: part.inlineData.mimeType || 'image/png',
+          }),
+        },
+      });
       return { image: part.inlineData.data };
     }
   }
 
+  currentSpan().log({ output: { error: 'No image in response' } });
   return { error: 'No image in response' };
-}
+});
 
 /**
  * Step 2: Generate comic image from script using OpenAI gpt-image-1
