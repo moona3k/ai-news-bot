@@ -267,8 +267,7 @@ STATE_FILE_PATH=/app/data/seen_articles.json
 
 # Image generation
 IMAGE_GEN_ENABLED=true
-IMAGE_PROVIDER=openai           # 'openai' or 'gemini' (for comic)
-GEMINI_API_KEY=AIza...          # Required for infographic
+GEMINI_API_KEY=AIza...          # Required for infographic (Nano Banana)
 ```
 
 ### Volume for State Persistence

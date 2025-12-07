@@ -18,11 +18,10 @@ export interface Config {
   // Optional: State file path
   stateFilePath: string;
 
-  // Image generation: true to generate 4-panel cartoons for articles
+  // Image generation: true to generate images for articles
   imageGenEnabled: boolean;
 
-  // Image provider: 'openai' (gpt-image-1) or 'gemini' (gemini-3-pro-image-preview)
-  imageProvider: 'openai' | 'gemini';
+  // Gemini API key for infographic generation
   geminiApiKey: string;
 }
 
@@ -49,7 +48,6 @@ export function loadConfig(): Config {
     port: parseInt(optionalEnv('PORT', '3000'), 10),
     stateFilePath: optionalEnv('STATE_FILE_PATH', './seen_articles.json'),
     imageGenEnabled: optionalEnv('IMAGE_GEN_ENABLED', 'false') === 'true',
-    imageProvider: (optionalEnv('IMAGE_PROVIDER', 'openai') as 'openai' | 'gemini'),
     geminiApiKey: optionalEnv('GEMINI_API_KEY', ''),
   };
 }

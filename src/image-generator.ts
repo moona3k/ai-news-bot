@@ -283,15 +283,13 @@ async function generateImageWithGemini(prompt: string): Promise<{ image: string 
 }
 
 /**
- * Step 2: Generate image from script using configured provider
+ * Step 2: Generate comic image from script using OpenAI gpt-image-1
  * Retries up to IMAGE_GEN_MAX_RETRIES times on failure
  */
 async function generateImageFromScript(script: CartoonScript): Promise<{ image: string } | { error: ImageGenerationError }> {
-  const config = getConfig();
   const prompt = buildImagePrompt(script);
-  const provider = config.imageProvider;
 
-  console.log(`    Step 2: Generating image with ${provider}...`);
+  console.log(`    Step 2: Generating comic with OpenAI gpt-image-1...`);
 
   let lastError = '';
 
@@ -301,21 +299,19 @@ async function generateImageFromScript(script: CartoonScript): Promise<{ image: 
         console.log(`    Retry attempt ${attempt}/${IMAGE_GEN_MAX_RETRIES}...`);
       }
 
-      const result = provider === 'gemini'
-        ? await generateImageWithGemini(prompt)
-        : await generateImageWithOpenAI(prompt);
+      const result = await generateImageWithOpenAI(prompt);
 
       if ('error' in result) {
         lastError = result.error;
-        console.log(`    Image generation returned error: ${lastError}`);
+        console.log(`    Comic generation returned error: ${lastError}`);
         continue;
       }
 
-      console.log(`    Image generated successfully (${provider})`);
+      console.log(`    Comic generated successfully`);
       return { image: result.image };
     } catch (err: any) {
       lastError = err?.error?.message || err?.message || String(err);
-      console.error(`    Image generation attempt ${attempt} failed:`, lastError);
+      console.error(`    Comic generation attempt ${attempt} failed:`, lastError);
 
       if (attempt < IMAGE_GEN_MAX_RETRIES) {
         await sleep(IMAGE_GEN_RETRY_DELAY);
@@ -323,7 +319,7 @@ async function generateImageFromScript(script: CartoonScript): Promise<{ image: 
     }
   }
 
-  console.error(`    Image generation failed after ${IMAGE_GEN_MAX_RETRIES} attempts`);
+  console.error(`    Comic generation failed after ${IMAGE_GEN_MAX_RETRIES} attempts`);
   return { error: { error: lastError, prompt } };
 }
 
