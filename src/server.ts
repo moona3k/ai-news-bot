@@ -377,58 +377,63 @@ const server = Bun.serve({
       const url_clean = parts[0];
       const contentType: ContentType = parts[1] === 'announcement' ? 'announcement' : 'technical';
 
-      // Post public "Thinking..." message with animated dots
+      // Post public "Thinking..." message with escalating messages for long waits
       const client = getSlackClient();
       let processingTs: string | undefined;
-      let dotCount = 1;
-      let animationInterval: ReturnType<typeof setTimeout> | undefined;
-      let animationStopped = false;
+      let thinkingTimeout: ReturnType<typeof setTimeout> | undefined;
+      let thinkingStopped = false;
+      let messageIndex = 0;
 
-      const startDotAnimation = () => {
+      // Thinking messages (shown every 10s after initial, all same level)
+      const thinkingMessages = [
+        ':thinking_party: Thinking hard...',
+        ':thinking_party: Deep in thought...',
+        ':thinking_party: Ultra-thinking...',
+        ':thinking_party: Still cooking...',
+        ':thinking_party: Crunching data...',
+        ':thinking_party: Still thinking...',
+      ];
+
+      const startThinkingEscalation = () => {
         const tick = () => {
-          if (animationStopped || !processingTs) {
-            console.log('Animation stopped, skipping tick');
-            return;
-          }
-          dotCount = (dotCount % 3) + 1;
-          const dots = '.'.repeat(dotCount);
-          console.log(`Animation tick: Thinking${dots}`);
+          if (thinkingStopped || !processingTs) return;
+          const message = thinkingMessages[messageIndex % thinkingMessages.length];
+          messageIndex++;
           client.chat.update({
             channel: payload.channel_id,
             ts: processingTs,
-            text: `:thinking_party: Thinking${dots}`,
+            text: message,
           }).catch((err: any) => {
-            console.log('Animation update error:', err?.data?.error || err?.message);
+            console.log('Thinking update error:', err?.data?.error || err?.message);
           }).finally(() => {
-            // Schedule next tick only if not stopped
-            if (!animationStopped) {
-              animationInterval = setTimeout(tick, 2000);
+            if (!thinkingStopped) {
+              thinkingTimeout = setTimeout(tick, 10000);
             }
           });
         };
-        // Start first tick after 2s
-        animationInterval = setTimeout(tick, 2000);
+        // Start first escalation after 10s
+        thinkingTimeout = setTimeout(tick, 10000);
       };
 
-      const stopDotAnimation = () => {
-        animationStopped = true;
-        if (animationInterval) {
-          clearTimeout(animationInterval);
-          animationInterval = undefined;
+      const stopThinkingEscalation = () => {
+        thinkingStopped = true;
+        if (thinkingTimeout) {
+          clearTimeout(thinkingTimeout);
+          thinkingTimeout = undefined;
         }
       };
 
       client.chat.postMessage({
         channel: payload.channel_id,
-        text: ':thinking_party: Thinking.',
+        text: ':thinking_party: Thinking...',
       }).then((thinkingMsg) => {
-        console.log('Posted Thinking message, starting animation');
+        console.log('Posted Thinking message');
         processingTs = thinkingMsg.ts;
-        startDotAnimation();
-        return processManualUrl(url_clean, contentType, payload.channel_id, processingTs, stopDotAnimation);
+        startThinkingEscalation();
+        return processManualUrl(url_clean, contentType, payload.channel_id, processingTs, stopThinkingEscalation);
       }).then(async (result) => {
         console.log('processManualUrl completed:', result.success ? 'success' : result.message);
-        stopDotAnimation();
+        stopThinkingEscalation();
         if (!result.success && processingTs) {
           // Update "Thinking..." with error
           await client.chat.update({
@@ -439,7 +444,7 @@ const server = Bun.serve({
         }
       }).catch(async (error) => {
         console.error('Slash command error:', error);
-        stopDotAnimation();
+        stopThinkingEscalation();
         if (processingTs) {
           await client.chat.update({
             channel: payload.channel_id,
