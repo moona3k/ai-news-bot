@@ -386,18 +386,14 @@ const server = Bun.serve({
 
       // Rocket animation: traveling from Earth to Moon
       const frames = [
-        '🌍 · · · · · · · · · · · · · · · · · · · · · · · 🌙',
-        '🌍 · :rocket-animated: · · · · · · · · · · · · · · · · · · · · 🌙',
-        '🌍 · · · :rocket-animated: · · · · · · · · · · · · · · · · · · 🌙',
-        '🌍 · · · · · :rocket-animated: · · · · · · · · · · · · · · · · 🌙',
-        '🌍 · · · · · · · :rocket-animated: · · · · · · · · · · · · · · 🌙',
-        '🌍 · · · · · · · · · :rocket-animated: · · · · · · · · · · · · 🌙',
-        '🌍 · · · · · · · · · · · :rocket-animated: · · · · · · · · · · 🌙',
-        '🌍 · · · · · · · · · · · · · :rocket-animated: · · · · · · · · 🌙',
-        '🌍 · · · · · · · · · · · · · · · :rocket-animated: · · · · · · 🌙',
-        '🌍 · · · · · · · · · · · · · · · · · :rocket-animated: · · · · 🌙',
-        '🌍 · · · · · · · · · · · · · · · · · · · :rocket-animated: · · 🌙',
-        '🌍 · · · · · · · · · · · · · · · · · · · · · :rocket-animated: 🌙',
+        '🌍 · · · · · · · · 🌙',
+        '🌍 · :rocket-animated: · · · · · · 🌙',
+        '🌍 · · :rocket-animated: · · · · · 🌙',
+        '🌍 · · · :rocket-animated: · · · · 🌙',
+        '🌍 · · · · :rocket-animated: · · · 🌙',
+        '🌍 · · · · · :rocket-animated: · · 🌙',
+        '🌍 · · · · · · :rocket-animated: · 🌙',
+        '🌍 · · · · · · · :rocket-animated: 🌙',
       ];
       const ANIMATION_INTERVAL_MS = 2000; // Update every 2s
 
