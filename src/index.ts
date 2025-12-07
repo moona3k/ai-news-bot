@@ -28,7 +28,7 @@ async function generateAndPostCartoon(
   channelId?: string
 ): Promise<void> {
   // Post progress message (static, no animation)
-  const progressTs = await postThreadMessage(":party_sunglasses_blob: OpenAI's gpt-image-1 model is drawing comic...", threadTs, channelId);
+  const progressTs = await postThreadMessage(":party_unicorn: OpenAI's gpt-image-1 model is drawing comic...", threadTs, channelId);
 
   const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
 
