@@ -384,40 +384,22 @@ const server = Bun.serve({
       let animationStopped = false;
       let frameIndex = 0;
 
-      // Animation styles - each is an array of frames that cycle
-      const animationStyles = {
-        // Space journey: rocket traveling from Earth to Moon
-        rocket: [
-          '🌍 · · · · · · · · · · · · · · · · · · · · · · · 🌙',
-          '🌍 · :rocket-animated: · · · · · · · · · · · · · · · · · · · · 🌙',
-          '🌍 · · · :rocket-animated: · · · · · · · · · · · · · · · · · · 🌙',
-          '🌍 · · · · · :rocket-animated: · · · · · · · · · · · · · · · · 🌙',
-          '🌍 · · · · · · · :rocket-animated: · · · · · · · · · · · · · · 🌙',
-          '🌍 · · · · · · · · · :rocket-animated: · · · · · · · · · · · · 🌙',
-          '🌍 · · · · · · · · · · · :rocket-animated: · · · · · · · · · · 🌙',
-          '🌍 · · · · · · · · · · · · · :rocket-animated: · · · · · · · · 🌙',
-          '🌍 · · · · · · · · · · · · · · · :rocket-animated: · · · · · · 🌙',
-          '🌍 · · · · · · · · · · · · · · · · · :rocket-animated: · · · · 🌙',
-          '🌍 · · · · · · · · · · · · · · · · · · · :rocket-animated: · · 🌙',
-          '🌍 · · · · · · · · · · · · · · · · · · · · · :rocket-animated: 🌙',
-        ],
-        // Equalizer: bouncing audio bars (wide)
-        equalizer: [
-          '▁▂▁▃▁▂▁▂▁▃▂▁▂▃▁▂▁▃▁▂',
-          '▂▄▂▅▂▃▂▄▂▅▃▂▃▄▂▃▂▄▂▃',
-          '▃▅▄▆▃▅▃▆▄▆▅▃▄▆▃▅▃▆▄▅',
-          '▅▇▅▇▅▆▅▇▅▇▆▅▆▇▅▆▅▇▅▆',
-          '▆█▇█▆▇▆█▇█▇▆▇█▆▇▆█▇▇',
-          '▅▇▆▇▅▆▅▇▆▇▆▅▆▇▅▆▅▇▆▆',
-          '▃▅▄▆▃▅▄▅▃▆▅▃▄▅▃▅▄▅▃▅',
-          '▂▃▂▄▂▃▂▃▂▄▃▂▃▄▂▃▂▄▂▃',
-        ],
-      };
-
-      // Choose animation style: 'rocket' or 'equalizer'
-      const activeStyle: keyof typeof animationStyles = 'equalizer';
-      const frames = animationStyles[activeStyle];
-      const ANIMATION_INTERVAL_MS = 1500; // Update every 1.5s
+      // Rocket animation: traveling from Earth to Moon
+      const frames = [
+        '🌍 · · · · · · · · · · · · · · · · · · · · · · · 🌙',
+        '🌍 · :rocket-animated: · · · · · · · · · · · · · · · · · · · · 🌙',
+        '🌍 · · · :rocket-animated: · · · · · · · · · · · · · · · · · · 🌙',
+        '🌍 · · · · · :rocket-animated: · · · · · · · · · · · · · · · · 🌙',
+        '🌍 · · · · · · · :rocket-animated: · · · · · · · · · · · · · · 🌙',
+        '🌍 · · · · · · · · · :rocket-animated: · · · · · · · · · · · · 🌙',
+        '🌍 · · · · · · · · · · · :rocket-animated: · · · · · · · · · · 🌙',
+        '🌍 · · · · · · · · · · · · · :rocket-animated: · · · · · · · · 🌙',
+        '🌍 · · · · · · · · · · · · · · · :rocket-animated: · · · · · · 🌙',
+        '🌍 · · · · · · · · · · · · · · · · · :rocket-animated: · · · · 🌙',
+        '🌍 · · · · · · · · · · · · · · · · · · · :rocket-animated: · · 🌙',
+        '🌍 · · · · · · · · · · · · · · · · · · · · · :rocket-animated: 🌙',
+      ];
+      const ANIMATION_INTERVAL_MS = 2000; // Update every 2s
 
       const startAnimation = () => {
         const tick = () => {
