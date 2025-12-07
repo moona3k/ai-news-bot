@@ -28,7 +28,7 @@ async function generateAndPostCartoon(
   channelId?: string
 ): Promise<void> {
   // Post progress message with animated dots
-  const progressTs = await postThreadMessage(':banana_dance: Drawing comic strip.', threadTs, channelId);
+  const progressTs = await postThreadMessage(":banana_dance: OpenAI's gpt-image-1 model is drawing comic.", threadTs, channelId);
 
   let animationStopped = false;
   let dotCount = 1;
@@ -38,7 +38,7 @@ async function generateAndPostCartoon(
     if (animationStopped || !progressTs) return;
     dotCount = (dotCount % 3) + 1;
     const dots = '.'.repeat(dotCount);
-    updateMessage(progressTs, `:banana_dance: Drawing comic strip${dots}`, channelId).finally(() => {
+    updateMessage(progressTs, `:banana_dance: OpenAI's gpt-image-1 model is drawing comic${dots}`, channelId).finally(() => {
       if (!animationStopped) {
         animationTimeout = setTimeout(animateDots, 2000);
       }
@@ -85,7 +85,7 @@ async function generateAndPostInfographic(
   }
 
   // Post progress message with animated dots
-  const progressTs = await postThreadMessage(':banana_dance: Creating infographic.', threadTs, channelId);
+  const progressTs = await postThreadMessage(":banana_dance: Google's Gemini 3 Pro model is creating infographic.", threadTs, channelId);
 
   let animationStopped = false;
   let dotCount = 1;
@@ -95,7 +95,7 @@ async function generateAndPostInfographic(
     if (animationStopped || !progressTs) return;
     dotCount = (dotCount % 3) + 1;
     const dots = '.'.repeat(dotCount);
-    updateMessage(progressTs, `:banana_dance: Creating infographic${dots}`, channelId).finally(() => {
+    updateMessage(progressTs, `:banana_dance: Google's Gemini 3 Pro model is creating infographic${dots}`, channelId).finally(() => {
       if (!animationStopped) {
         animationTimeout = setTimeout(animateDots, 2000);
       }
