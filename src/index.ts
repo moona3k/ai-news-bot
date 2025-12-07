@@ -28,7 +28,7 @@ async function generateAndPostCartoon(
   channelId?: string
 ): Promise<void> {
   // Post progress message with animated dots
-  const progressTs = await postThreadMessage(":banana_dance: OpenAI's gpt-image-1 model is drawing comic.", threadTs, channelId);
+  const progressTs = await postThreadMessage(":party_sunglasses_blob: OpenAI's gpt-image-1 model is drawing comic.", threadTs, channelId);
 
   let animationStopped = false;
   let dotCount = 1;
@@ -38,7 +38,7 @@ async function generateAndPostCartoon(
     if (animationStopped || !progressTs) return;
     dotCount = (dotCount % 3) + 1;
     const dots = '.'.repeat(dotCount);
-    updateMessage(progressTs, `:banana_dance: OpenAI's gpt-image-1 model is drawing comic${dots}`, channelId).finally(() => {
+    updateMessage(progressTs, `:party_sunglasses_blob: OpenAI's gpt-image-1 model is drawing comic${dots}`, channelId).finally(() => {
       if (!animationStopped) {
         animationTimeout = setTimeout(animateDots, 2000);
       }
@@ -221,22 +221,20 @@ async function processSource(source: Source, state: State): Promise<State> {
         const config = getConfig();
         if (config.imageGenEnabled) {
           const haiku = extractHaiku(summaries.mainSummary);
-          // Generate both in parallel: comic (OpenAI) + infographic (Gemini)
-          await Promise.all([
-            generateAndPostCartoon(
-              haiku,
-              article.title,
-              article.content,
-              source.contentType,
-              threadTs
-            ),
-            generateAndPostInfographic(
-              article.title,
-              article.content,
-              source.contentType,
-              threadTs
-            ),
-          ]);
+          // Generate sequentially: infographic (Gemini) first, then comic (OpenAI)
+          await generateAndPostInfographic(
+            article.title,
+            article.content,
+            source.contentType,
+            threadTs
+          );
+          await generateAndPostCartoon(
+            haiku,
+            article.title,
+            article.content,
+            source.contentType,
+            threadTs
+          );
         }
 
         // Mark as seen ONLY after successful Slack post
@@ -335,24 +333,22 @@ export async function processManualUrl(
       // Generate and post images if enabled
       if (config.imageGenEnabled) {
         const haiku = extractHaiku(summaries.mainSummary);
-        // Generate both in parallel: comic (OpenAI) + infographic (Gemini)
-        await Promise.all([
-          generateAndPostCartoon(
-            haiku,
-            article.title,
-            article.content,
-            contentType,
-            threadTs,
-            channelId
-          ),
-          generateAndPostInfographic(
-            article.title,
-            article.content,
-            contentType,
-            threadTs,
-            channelId
-          ),
-        ]);
+        // Generate sequentially: infographic (Gemini) first, then comic (OpenAI)
+        await generateAndPostInfographic(
+          article.title,
+          article.content,
+          contentType,
+          threadTs,
+          channelId
+        );
+        await generateAndPostCartoon(
+          haiku,
+          article.title,
+          article.content,
+          contentType,
+          threadTs,
+          channelId
+        );
       }
 
       // Only mark as seen for primary channel
