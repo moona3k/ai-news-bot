@@ -249,6 +249,7 @@ async function generateImageWithOpenAI(prompt: string): Promise<{ image: string 
 
 /**
  * Generate image using Gemini gemini-3-pro-image-preview (Nano Banana Pro)
+ * Traced in Braintrust for observability
  */
 async function generateImageWithGemini(prompt: string): Promise<{ image: string } | { error: string }> {
   const config = getConfig();
@@ -257,29 +258,64 @@ async function generateImageWithGemini(prompt: string): Promise<{ image: string 
     return { error: 'GEMINI_API_KEY not configured' };
   }
 
-  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+  return traced(
+    async (span) => {
+      const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+      const startTime = Date.now();
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
-    contents: prompt,
-    config: {
-      responseModalities: ['TEXT', 'IMAGE'],
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: prompt,
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+        },
+      });
+
+      const durationMs = Date.now() - startTime;
+
+      // Extract image from response
+      const parts = response.candidates?.[0]?.content?.parts;
+      if (!parts) {
+        span.log({
+          output: { error: 'No response parts received' },
+          metrics: { duration_ms: durationMs },
+        });
+        return { error: 'No response parts received' };
+      }
+
+      for (const part of parts) {
+        if (part.inlineData?.data) {
+          // Log success with image attachment
+          const imageBuffer = Buffer.from(part.inlineData.data, 'base64');
+          span.log({
+            output: {
+              image: new Attachment({
+                data: imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength),
+                filename: 'gemini-image.png',
+                contentType: part.inlineData.mimeType || 'image/png',
+              }),
+            },
+            metrics: { duration_ms: durationMs },
+          });
+          return { image: part.inlineData.data };
+        }
+      }
+
+      span.log({
+        output: { error: 'No image in response' },
+        metrics: { duration_ms: durationMs },
+      });
+      return { error: 'No image in response' };
     },
-  });
-
-  // Extract image from response
-  const parts = response.candidates?.[0]?.content?.parts;
-  if (!parts) {
-    return { error: 'No response parts received' };
-  }
-
-  for (const part of parts) {
-    if (part.inlineData?.data) {
-      return { image: part.inlineData.data };
+    {
+      name: 'generateImageWithGemini',
+      type: 'llm',
+      event: {
+        input: [{ role: 'user', content: prompt }],
+        metadata: { model: 'gemini-3-pro-image-preview' },
+      },
     }
-  }
-
-  return { error: 'No image in response' };
+  );
 }
 
 /**
