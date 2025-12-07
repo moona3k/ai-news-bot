@@ -19,9 +19,11 @@ const PROMPTS = {
 
 3. An ELI5 - explain this to a smart non-technical friend. You have stylistic freedom: prose, bullets, emojis, whatever makes it clearest. Length should match the content - brief for simple stuff, longer for rich/complex topics. Use **bold** sparingly and only for key concepts or terms (not random words for emphasis). Optimize for readability and accurate understanding.
 
-If you use any technical terms that need defining, add a brief glossary at the end like:
-_Glossary: Term1 = simple definition; Term2 = simple definition_
-Only include if actually needed - skip if everything is already clear.
+If you use any technical terms that need defining, add a glossary at the very end. Format it like this example:
+📖 *Glossary*
+• *Token* = a small chunk of text; models generate text one token at a time
+• *MoE* = Mixture of Experts, a model architecture with specialized sub-networks
+Only include glossary if actually needed - skip if everything is already clear.
 
 Format your response EXACTLY like this (use --- as separator):
 [haiku line 1]
@@ -41,9 +43,11 @@ Format your response EXACTLY like this (use --- as separator):
 
 3. An ELI5 - what does this mean for regular people or the industry? You have stylistic freedom: prose, bullets, emojis, whatever makes it clearest. Length should match the content - brief for simple stuff, longer for complex announcements. Use **bold** sparingly and only for key concepts or terms (not random words for emphasis). No hype, just clarity.
 
-If you use any jargon that needs explaining, add a brief glossary at the end like:
-_Glossary: Term1 = simple definition; Term2 = simple definition_
-Only include if actually needed.
+If you use any jargon that needs explaining, add a glossary at the very end. Format it like this example:
+📖 *Glossary*
+• *Token* = a small chunk of text; models generate text one token at a time
+• *MoE* = Mixture of Experts, a model architecture with specialized sub-networks
+Only include glossary if actually needed.
 
 Format your response EXACTLY like this (use --- as separator):
 [haiku line 1]
