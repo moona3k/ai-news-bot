@@ -229,22 +229,55 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Generate image using OpenAI gpt-image-1
+ * Traced in Braintrust for observability
  */
 async function generateImageWithOpenAI(prompt: string): Promise<{ image: string } | { error: string }> {
-  const result = await openai.images.generate({
-    model: 'gpt-image-1',
-    prompt,
-    size: '1024x1024',
-    n: 1,
-  });
+  return traced(
+    async (span) => {
+      const startTime = Date.now();
 
-  const imageBase64 = result.data?.[0]?.b64_json;
+      const result = await openai.images.generate({
+        model: 'gpt-image-1',
+        prompt,
+        size: '1024x1024',
+        n: 1,
+      });
 
-  if (!imageBase64) {
-    return { error: 'No image data returned' };
-  }
+      const durationMs = Date.now() - startTime;
+      const imageBase64 = result.data?.[0]?.b64_json;
 
-  return { image: imageBase64 };
+      if (!imageBase64) {
+        span.log({
+          output: { error: 'No image data returned' },
+          metrics: { duration_ms: durationMs },
+        });
+        return { error: 'No image data returned' };
+      }
+
+      // Log success with image attachment
+      const imageBuffer = Buffer.from(imageBase64, 'base64');
+      span.log({
+        output: {
+          image: new Attachment({
+            data: imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength),
+            filename: 'openai-image.png',
+            contentType: 'image/png',
+          }),
+        },
+        metrics: { duration_ms: durationMs },
+      });
+
+      return { image: imageBase64 };
+    },
+    {
+      name: 'generateImageWithOpenAI',
+      type: 'llm',
+      event: {
+        input: [{ role: 'user', content: prompt }],
+        metadata: { model: 'gpt-image-1' },
+      },
+    }
+  );
 }
 
 /**
