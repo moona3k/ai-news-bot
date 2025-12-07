@@ -7,7 +7,7 @@
 // The script content may need adjustment to avoid triggering safety filters.
 
 import { openai } from './openai';
-import { Attachment, traced, wrapGoogleGenAI } from 'braintrust';
+import { Attachment, wrapTraced, wrapGoogleGenAI, currentSpan } from 'braintrust';
 import * as googleGenAI from '@google/genai';
 import { getConfig } from './config';
 
@@ -233,9 +233,17 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Generate image using OpenAI gpt-image-1
- * Note: wrapOpenAI auto-traces this call to Braintrust
+ * Manually traced since wrapOpenAI doesn't support images.generate
  */
-async function generateImageWithOpenAI(prompt: string): Promise<{ image: string } | { error: string }> {
+const generateImageWithOpenAI = wrapTraced(async function generateImageWithOpenAI(
+  prompt: string
+): Promise<{ image: string } | { error: string }> {
+  // Log input
+  currentSpan().log({
+    input: prompt,
+    metadata: { model: 'gpt-image-1' },
+  });
+
   const result = await openai.images.generate({
     model: 'gpt-image-1',
     prompt,
@@ -246,11 +254,24 @@ async function generateImageWithOpenAI(prompt: string): Promise<{ image: string 
   const imageBase64 = result.data?.[0]?.b64_json;
 
   if (!imageBase64) {
+    currentSpan().log({ output: { error: 'No image data returned' } });
     return { error: 'No image data returned' };
   }
 
+  // Log output with image attachment
+  const imageBuffer = Buffer.from(imageBase64, 'base64');
+  currentSpan().log({
+    output: {
+      image: new Attachment({
+        data: imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength),
+        filename: 'openai-image.png',
+        contentType: 'image/png',
+      }),
+    },
+  });
+
   return { image: imageBase64 };
-}
+});
 
 /**
  * Generate image using Gemini gemini-3-pro-image-preview (Nano Banana Pro)
