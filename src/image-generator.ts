@@ -7,7 +7,7 @@
 // The script content may need adjustment to avoid triggering safety filters.
 
 import { openai } from './openai';
-import { Attachment, wrapTraced, wrapGoogleGenAI, currentSpan } from 'braintrust';
+import { Attachment, traced, wrapTraced, wrapGoogleGenAI, currentSpan } from 'braintrust';
 import * as googleGenAI from '@google/genai';
 import { getConfig } from './config';
 
