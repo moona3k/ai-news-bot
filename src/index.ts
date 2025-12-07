@@ -7,7 +7,7 @@ import { loadState, saveState, isArticleSeen, markArticleSeen, isSourceAlerted, 
 import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
-import { postArticleThread, sendMessage, postImageReply, postCartoonError, postThreadMessage, deleteMessage, updateMessage } from './slack';
+import { postArticleThread, sendMessage, postImageReply, postCartoonError, postThreadMessage, deleteMessage } from './slack';
 import { generateArticleCartoon, generateArticleInfographic, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
@@ -27,32 +27,12 @@ async function generateAndPostCartoon(
   threadTs: string,
   channelId?: string
 ): Promise<void> {
-  // Post progress message with animated dots
-  const progressTs = await postThreadMessage(":party_sunglasses_blob: OpenAI's gpt-image-1 model is drawing comic.", threadTs, channelId);
-
-  let animationStopped = false;
-  let dotCount = 1;
-  let animationTimeout: ReturnType<typeof setTimeout> | undefined;
-
-  const animateDots = () => {
-    if (animationStopped || !progressTs) return;
-    dotCount = (dotCount % 3) + 1;
-    const dots = '.'.repeat(dotCount);
-    updateMessage(progressTs, `:party_sunglasses_blob: OpenAI's gpt-image-1 model is drawing comic${dots}`, channelId).finally(() => {
-      if (!animationStopped) {
-        animationTimeout = setTimeout(animateDots, 2000);
-      }
-    });
-  };
-
-  // Start animation after 2s
-  animationTimeout = setTimeout(animateDots, 2000);
+  // Post progress message (static, no animation)
+  const progressTs = await postThreadMessage(":party_sunglasses_blob: OpenAI's gpt-image-1 model is drawing comic...", threadTs, channelId);
 
   const result = await generateArticleCartoon(haiku, articleTitle, articleContent, contentType);
 
-  // Stop animation and delete progress message
-  animationStopped = true;
-  if (animationTimeout) clearTimeout(animationTimeout);
+  // Delete progress message
   if (progressTs) {
     await deleteMessage(progressTs, channelId);
   }
@@ -84,32 +64,12 @@ async function generateAndPostInfographic(
     return;
   }
 
-  // Post progress message with animated dots
-  const progressTs = await postThreadMessage(":banana_dance: Google's gemini-3-pro (Nano Banana) model is creating infographic.", threadTs, channelId);
-
-  let animationStopped = false;
-  let dotCount = 1;
-  let animationTimeout: ReturnType<typeof setTimeout> | undefined;
-
-  const animateDots = () => {
-    if (animationStopped || !progressTs) return;
-    dotCount = (dotCount % 3) + 1;
-    const dots = '.'.repeat(dotCount);
-    updateMessage(progressTs, `:banana_dance: Google's gemini-3-pro (Nano Banana) model is creating infographic${dots}`, channelId).finally(() => {
-      if (!animationStopped) {
-        animationTimeout = setTimeout(animateDots, 2000);
-      }
-    });
-  };
-
-  // Start animation after 2s
-  animationTimeout = setTimeout(animateDots, 2000);
+  // Post progress message (static, no animation)
+  const progressTs = await postThreadMessage(":banana_dance: Google's gemini-3-pro (Nano Banana) model is creating infographic...", threadTs, channelId);
 
   const result = await generateArticleInfographic(articleTitle, articleContent, contentType);
 
-  // Stop animation and delete progress message
-  animationStopped = true;
-  if (animationTimeout) clearTimeout(animationTimeout);
+  // Delete progress message
   if (progressTs) {
     await deleteMessage(progressTs, channelId);
   }
