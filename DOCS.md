@@ -17,10 +17,12 @@ By monitoring Anthropic, OpenAI, DeepMind, Meta, Qwen, and other frontier labs, 
 **Key Features**:
 - Monitor 14 blog sources (Anthropic, OpenAI, DeepMind, Meta, Qwen, Cursor, Allen AI, Cognition, Reflection AI, Simon Willison, Thinking Machines)
 - Content-type aware processing (technical vs announcement)
-- Three outputs per article:
+- Five outputs per article:
   1. **Main post**: Haiku + one-liner (as clickable link) + Slack unfurl
   2. **Thread reply 1**: ELI5 explanation
   3. **Thread reply 2**: Research Context ("The Scoop") with "Bottom line:" hot take
+  4. **Thread reply 3**: 4-panel XKCD-style comic (OpenAI `gpt-image-1`)
+  5. **Thread reply 4**: Infographic summary (Google `gemini-3-pro`)
 - State tracking to avoid duplicate posts (persistent volume)
 - Alert system for broken scrapers (one alert per issue, no spam)
 - Seed mode for clean initialization
@@ -48,13 +50,20 @@ By monitoring Anthropic, OpenAI, DeepMind, Meta, Qwen, and other frontier labs, 
 - **Runtime**: Bun
 - **Summarization**: OpenAI GPT-5.1 (`gpt-5.1-chat-latest`)
 - **Agentic Research**: OpenAI Responses API with `web_search` tool
+- **Image Generation**:
+  - OpenAI `gpt-image-1` for XKCD-style comics
+  - Google `gemini-3-pro` (Nano Banana) for infographics
 - **Scraping**: Cheerio (HTML parsing) + @mozilla/readability (content extraction)
 - **Slack**: @slack/web-api
 
-### Single API Key Design
-Everything runs on **one OpenAI API key**:
-- GPT-5.1 for summaries (haiku + take + ELI5)
-- Responses API for agentic research (web search built-in)
+### Dual Image Generation
+Each article gets two AI-generated images (in parallel):
+1. **Comic** (OpenAI `gpt-image-1`): 4-panel XKCD-style cartoon - humor and storytelling
+2. **Infographic** (Google `gemini-3-pro`): Visual summary with key points - educational
+
+Both use a 2-step pipeline:
+1. LLM generates structured script/brief
+2. Image model renders the visual
 
 ## Project Structure
 
@@ -75,7 +84,8 @@ ai-news-bot/
 ├── .env.example           # Template
 ├── package.json
 ├── seen_articles.json     # State file (gitignored)
-└── DOCS.md                # This file
+├── DOCS.md                # This file
+└── NANO_BANANA_PRO_GUIDE.md  # Gemini image gen prompting guide
 ```
 
 ## Commands
@@ -215,10 +225,12 @@ Returns:
 **LLM costs per article:**
 - GPT-5.1 (haiku + ELI5): ~$0.01-0.02
 - Responses API (research): ~$0.05-0.10
-- **Total per article**: ~$0.07-0.12
+- OpenAI gpt-image-1 (comic): ~$0.02-0.04
+- Gemini gemini-3-pro (infographic): ~$0.04
+- **Total per article**: ~$0.12-0.20
 
 **Monthly estimates** (assuming 5 new articles/day):
-- ~$10-20/month for LLM
+- ~$20-30/month for LLM + image gen
 - Railway cron: ~$0.20/month
 
 **Check frequency doesn't affect cost** - you only pay for LLM when there's a new article. Hourly vs every 4 hours costs the same.
@@ -252,6 +264,11 @@ OPENAI_API_KEY=sk-...
 SLACK_BOT_TOKEN=xoxb-...
 SLACK_CHANNEL_ID=C...
 STATE_FILE_PATH=/app/data/seen_articles.json
+
+# Image generation
+IMAGE_GEN_ENABLED=true
+IMAGE_PROVIDER=openai           # 'openai' or 'gemini' (for comic)
+GEMINI_API_KEY=AIza...          # Required for infographic
 ```
 
 ### Volume for State Persistence
