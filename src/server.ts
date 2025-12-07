@@ -386,7 +386,7 @@ const server = Bun.serve({
 
       // Rocket animation: traveling from Earth to Moon (moon fills up as rocket approaches)
       const frames = [
-        '🌍 · · · · · · · · 🌑',
+        '🌍 :rocket-animated: · · · · · · · 🌑',
         '🌍 · :rocket-animated: · · · · · · 🌒',
         '🌍 · · :rocket-animated: · · · · · 🌒',
         '🌍 · · · :rocket-animated: · · · · 🌓',
