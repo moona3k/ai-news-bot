@@ -377,63 +377,85 @@ const server = Bun.serve({
       const url_clean = parts[0];
       const contentType: ContentType = parts[1] === 'announcement' ? 'announcement' : 'technical';
 
-      // Post public "Thinking..." message with escalating messages for long waits
+      // Post public "Thinking..." message with animated progress indicator
       const client = getSlackClient();
       let processingTs: string | undefined;
-      let thinkingTimeout: ReturnType<typeof setTimeout> | undefined;
-      let thinkingStopped = false;
-      let messageIndex = 0;
+      let animationTimeout: ReturnType<typeof setTimeout> | undefined;
+      let animationStopped = false;
+      let frameIndex = 0;
 
-      // Thinking messages (shown every 10s after initial, all same level)
-      const thinkingMessages = [
-        ':thinking_party: Thinking hard...',
-        ':thinking_party: Deep in thought...',
-        ':thinking_party: Ultra-thinking...',
-        ':thinking_party: Still cooking...',
-        ':thinking_party: Crunching data...',
-        ':thinking_party: Still thinking...',
-      ];
+      // Animation styles - each is an array of frames that cycle
+      const animationStyles = {
+        // Space journey: rocket traveling from Earth to Moon
+        rocket: [
+          ':thinking_party: 🌍 · · · · · · · · 🌙',
+          ':thinking_party: 🌍 · 🚀 · · · · · · 🌙',
+          ':thinking_party: 🌍 · · 🚀 · · · · · 🌙',
+          ':thinking_party: 🌍 · · · 🚀 · · · · 🌙',
+          ':thinking_party: 🌍 · · · · 🚀 · · · 🌙',
+          ':thinking_party: 🌍 · · · · · 🚀 · · 🌙',
+          ':thinking_party: 🌍 · · · · · · 🚀 · 🌙',
+          ':thinking_party: 🌍 · · · · · · · 🚀 🌙',
+        ],
+        // Equalizer: bouncing audio bars
+        equalizer: [
+          ':thinking_party: ▁▂▁▃▁▂▁▂',
+          ':thinking_party: ▂▃▂▄▂▃▂▁',
+          ':thinking_party: ▃▅▃▆▃▄▃▂',
+          ':thinking_party: ▅▇▅▇▄▆▄▃',
+          ':thinking_party: ▆█▆█▆▇▅▄',
+          ':thinking_party: ▅▇▅▇▅▆▄▃',
+          ':thinking_party: ▃▅▄▅▃▄▃▂',
+          ':thinking_party: ▂▃▂▄▂▃▂▁',
+        ],
+      };
 
-      const startThinkingEscalation = () => {
+      // Choose animation style: 'rocket' or 'equalizer'
+      const activeStyle: keyof typeof animationStyles = 'rocket';
+      const frames = animationStyles[activeStyle];
+      const ANIMATION_INTERVAL_MS = 1500; // Update every 1.5s
+
+      const startAnimation = () => {
         const tick = () => {
-          if (thinkingStopped || !processingTs) return;
-          const message = thinkingMessages[messageIndex % thinkingMessages.length];
-          messageIndex++;
+          if (animationStopped || !processingTs) return;
+          const frame = frames[frameIndex % frames.length];
+          frameIndex++;
           client.chat.update({
             channel: payload.channel_id,
             ts: processingTs,
-            text: message,
+            text: frame,
           }).catch((err: any) => {
-            console.log('Thinking update error:', err?.data?.error || err?.message);
+            console.log('Animation update error:', err?.data?.error || err?.message);
           }).finally(() => {
-            if (!thinkingStopped) {
-              thinkingTimeout = setTimeout(tick, 10000);
+            if (!animationStopped) {
+              animationTimeout = setTimeout(tick, ANIMATION_INTERVAL_MS);
             }
           });
         };
-        // Start first escalation after 10s
-        thinkingTimeout = setTimeout(tick, 10000);
+        // Start first frame update after interval
+        animationTimeout = setTimeout(tick, ANIMATION_INTERVAL_MS);
       };
 
-      const stopThinkingEscalation = () => {
-        thinkingStopped = true;
-        if (thinkingTimeout) {
-          clearTimeout(thinkingTimeout);
-          thinkingTimeout = undefined;
+      const stopAnimation = () => {
+        animationStopped = true;
+        if (animationTimeout) {
+          clearTimeout(animationTimeout);
+          animationTimeout = undefined;
         }
       };
 
       client.chat.postMessage({
         channel: payload.channel_id,
-        text: ':thinking_party: Thinking...',
+        text: frames[0], // Start with first frame
       }).then((thinkingMsg) => {
-        console.log('Posted Thinking message');
+        console.log('Posted thinking animation');
         processingTs = thinkingMsg.ts;
-        startThinkingEscalation();
-        return processManualUrl(url_clean, contentType, payload.channel_id, processingTs, stopThinkingEscalation);
+        frameIndex = 1; // Start from second frame since we posted first
+        startAnimation();
+        return processManualUrl(url_clean, contentType, payload.channel_id, processingTs, stopAnimation);
       }).then(async (result) => {
         console.log('processManualUrl completed:', result.success ? 'success' : result.message);
-        stopThinkingEscalation();
+        stopAnimation();
         if (!result.success && processingTs) {
           // Update "Thinking..." with error
           await client.chat.update({
@@ -444,7 +466,7 @@ const server = Bun.serve({
         }
       }).catch(async (error) => {
         console.error('Slash command error:', error);
-        stopThinkingEscalation();
+        stopAnimation();
         if (processingTs) {
           await client.chat.update({
             channel: payload.channel_id,
