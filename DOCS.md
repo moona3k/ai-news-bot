@@ -310,10 +310,10 @@ Attach a Railway volume:
 - URL can be anywhere in the text
 
 The bot will:
-1. Post `:thinking_party: Thinking...` publicly
+1. Show animated rocket progress: `🌍 · 🚀 · · · · · · 🌒` → `🌕`
 2. Fetch, summarize, and research the article
-3. Update the "Thinking..." message with the final haiku + link
-4. Add thread replies (ELI5 + Research)
+3. Replace animation with the final haiku + link
+4. Add thread replies (ELI5 + Research + Comic + Infographic)
 
 **Note:** Duplicate detection only applies to `#ai-latest`. Using `/ai-news` in other channels always works, even for previously posted articles.
 
@@ -354,7 +354,21 @@ Each source has its own CSS selector. Generic rules cause false positives (like 
 The "seen" state only applies to `#ai-latest`. Using `/ai-news` in other channels bypasses duplicate detection and doesn't pollute the seen map. This lets teams repost articles to their own channels freely.
 
 ### "Thinking..." UX
-Both `/ai-news` and @mentions show a public `:thinking_party: Thinking...` message that gets updated with the final result. This gives immediate feedback and lets everyone in the channel see the bot is working.
+Both `/ai-news` and @mentions show animated progress indicators:
+
+**Slash command (`/ai-news`)**: Rocket animation with moon phases
+```
+🌍 · · · · · · · · 🌑  (start)
+🌍 · 🚀 · · · · · · 🌒
+🌍 · · · 🚀 · · · · 🌓
+🌍 · · · · · 🚀 · · 🌔
+🌍 · · · · · · · 🚀 🌕  (rocket arrives, moon full)
+```
+Updates every 2 seconds, cycles if processing takes longer.
+
+**@mentions**: Simple `:thinking_party: Thinking...` message.
+
+Both get replaced with the final result when complete.
 
 ## LLM Observability
 
