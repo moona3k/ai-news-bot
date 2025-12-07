@@ -415,7 +415,7 @@ const server = Bun.serve({
       };
 
       // Choose animation style: 'rocket' or 'equalizer'
-      const activeStyle: keyof typeof animationStyles = 'rocket';
+      const activeStyle: keyof typeof animationStyles = 'equalizer';
       const frames = animationStyles[activeStyle];
       const ANIMATION_INTERVAL_MS = 1500; // Update every 1.5s
 
