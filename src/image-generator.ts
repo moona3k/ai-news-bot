@@ -8,6 +8,8 @@
 
 import { openai } from './openai';
 import { Attachment, traced } from 'braintrust';
+import { GoogleGenAI } from '@google/genai';
+import { getConfig } from './config';
 import type { ContentType } from './sources';
 
 // ============================================================
@@ -176,7 +178,7 @@ Remember to output in the exact format specified (STYLE, CHARACTER, PANEL 1-4).`
 }
 
 // ============================================================
-// Step 2: Image Generation (gpt-image-1)
+// Step 2: Image Generation (gpt-image-1 or gemini-3-pro-image-preview)
 // ============================================================
 
 /**
@@ -226,13 +228,70 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Step 2: Generate image from script using gpt-image-1
+ * Generate image using OpenAI gpt-image-1
+ */
+async function generateImageWithOpenAI(prompt: string): Promise<{ image: string } | { error: string }> {
+  const result = await openai.images.generate({
+    model: 'gpt-image-1',
+    prompt,
+    size: '1024x1024',
+    n: 1,
+  });
+
+  const imageBase64 = result.data?.[0]?.b64_json;
+
+  if (!imageBase64) {
+    return { error: 'No image data returned' };
+  }
+
+  return { image: imageBase64 };
+}
+
+/**
+ * Generate image using Gemini gemini-3-pro-image-preview (Nano Banana Pro)
+ */
+async function generateImageWithGemini(prompt: string): Promise<{ image: string } | { error: string }> {
+  const config = getConfig();
+
+  if (!config.geminiApiKey) {
+    return { error: 'GEMINI_API_KEY not configured' };
+  }
+
+  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: prompt,
+    config: {
+      responseModalities: ['TEXT', 'IMAGE'],
+    },
+  });
+
+  // Extract image from response
+  const parts = response.candidates?.[0]?.content?.parts;
+  if (!parts) {
+    return { error: 'No response parts received' };
+  }
+
+  for (const part of parts) {
+    if (part.inlineData?.data) {
+      return { image: part.inlineData.data };
+    }
+  }
+
+  return { error: 'No image in response' };
+}
+
+/**
+ * Step 2: Generate image from script using configured provider
  * Retries up to IMAGE_GEN_MAX_RETRIES times on failure
  */
 async function generateImageFromScript(script: CartoonScript): Promise<{ image: string } | { error: ImageGenerationError }> {
+  const config = getConfig();
   const prompt = buildImagePrompt(script);
+  const provider = config.imageProvider;
 
-  console.log(`    Step 2: Generating image from script...`);
+  console.log(`    Step 2: Generating image with ${provider}...`);
 
   let lastError = '';
 
@@ -242,23 +301,18 @@ async function generateImageFromScript(script: CartoonScript): Promise<{ image: 
         console.log(`    Retry attempt ${attempt}/${IMAGE_GEN_MAX_RETRIES}...`);
       }
 
-      const result = await openai.images.generate({
-        model: 'gpt-image-1',
-        prompt,
-        size: '1024x1024',
-        n: 1,
-      });
+      const result = provider === 'gemini'
+        ? await generateImageWithGemini(prompt)
+        : await generateImageWithOpenAI(prompt);
 
-      const imageBase64 = result.data?.[0]?.b64_json;
-
-      if (!imageBase64) {
-        console.log('    Image generation returned no data');
-        lastError = 'No image data returned';
+      if ('error' in result) {
+        lastError = result.error;
+        console.log(`    Image generation returned error: ${lastError}`);
         continue;
       }
 
-      console.log('    Image generated successfully');
-      return { image: imageBase64 };
+      console.log(`    Image generated successfully (${provider})`);
+      return { image: result.image };
     } catch (err: any) {
       lastError = err?.error?.message || err?.message || String(err);
       console.error(`    Image generation attempt ${attempt} failed:`, lastError);
@@ -365,4 +419,301 @@ export async function generateArticleCartoon(
 export function extractHaiku(mainSummary: string): string {
   const parts = mainSummary.trim().split('\n\n');
   return parts[0] || mainSummary;
+}
+
+// ============================================================
+// Infographic Generation (Gemini Nano Banana Pro)
+// ============================================================
+
+const INFOGRAPHIC_SYSTEM_PROMPT = `You are an infographic designer for a tech newsletter. Your job is to create a structured brief for a visual infographic that summarizes a tech article's key points.
+
+Your brief must follow this EXACT format:
+
+HEADLINE: [Catchy 3-6 word title for the infographic]
+SUBTITLE: [One sentence explaining what this infographic shows]
+STYLE: [One of: "clean minimal" | "tech blueprint" | "magazine editorial" | "data dashboard"]
+COLOR_SCHEME: [e.g., "dark mode with cyan accents" | "white with orange highlights" | "gradient blue to purple"]
+
+KEY_POINT_1: [Icon suggestion] | [Short label, 2-4 words] | [One sentence explanation]
+KEY_POINT_2: [Icon suggestion] | [Short label, 2-4 words] | [One sentence explanation]
+KEY_POINT_3: [Icon suggestion] | [Short label, 2-4 words] | [One sentence explanation]
+KEY_POINT_4: [Icon suggestion] | [Short label, 2-4 words] | [One sentence explanation] (optional)
+
+BOTTOM_LINE: [One punchy sentence - the main takeaway]
+
+Guidelines:
+- Extract the 3-4 MOST important insights from the article
+- Each key point should be visually distinct and memorable
+- Icon suggestions should be simple and universal (brain, rocket, shield, chart, etc.)
+- The headline should grab attention
+- Keep text concise - infographics are visual, not walls of text
+- The bottom line should be quotable and shareable`;
+
+interface InfographicBrief {
+  headline: string;
+  subtitle: string;
+  style: string;
+  colorScheme: string;
+  keyPoints: Array<{
+    icon: string;
+    label: string;
+    explanation: string;
+  }>;
+  bottomLine: string;
+  raw: string;
+}
+
+/**
+ * Parse the structured infographic brief from the LLM
+ */
+function parseInfographicBrief(raw: string): InfographicBrief | null {
+  try {
+    const headlineMatch = raw.match(/HEADLINE:\s*(.+)/i);
+    const subtitleMatch = raw.match(/SUBTITLE:\s*(.+)/i);
+    const styleMatch = raw.match(/STYLE:\s*(.+)/i);
+    const colorMatch = raw.match(/COLOR_SCHEME:\s*(.+)/i);
+    const bottomLineMatch = raw.match(/BOTTOM_LINE:\s*(.+)/i);
+
+    // Parse key points
+    const keyPointMatches = raw.matchAll(/KEY_POINT_\d+:\s*(.+)/gi);
+    const keyPoints: InfographicBrief['keyPoints'] = [];
+
+    for (const match of keyPointMatches) {
+      const parts = match[1].split('|').map((s) => s.trim());
+      if (parts.length >= 3) {
+        keyPoints.push({
+          icon: parts[0],
+          label: parts[1],
+          explanation: parts[2],
+        });
+      }
+    }
+
+    if (!headlineMatch || !styleMatch || keyPoints.length < 3) {
+      console.log('    Failed to parse infographic brief - missing fields');
+      return null;
+    }
+
+    return {
+      headline: headlineMatch[1].trim(),
+      subtitle: subtitleMatch ? subtitleMatch[1].trim() : '',
+      style: styleMatch[1].trim(),
+      colorScheme: colorMatch ? colorMatch[1].trim() : 'dark mode with cyan accents',
+      keyPoints,
+      bottomLine: bottomLineMatch ? bottomLineMatch[1].trim() : '',
+      raw,
+    };
+  } catch (error) {
+    console.error('    Infographic brief parsing error:', error);
+    return null;
+  }
+}
+
+/**
+ * Generate infographic brief using LLM
+ */
+async function generateInfographicBrief(
+  articleTitle: string,
+  articleExcerpt: string,
+  contentType: ContentType
+): Promise<InfographicBrief | null> {
+  const userPrompt = `Create an infographic brief for this tech article:
+
+Article Title: "${articleTitle}"
+Content Type: ${contentType}
+
+Article Content:
+${articleExcerpt.slice(0, 3000)}
+
+Remember to output in the exact format specified (HEADLINE, SUBTITLE, STYLE, COLOR_SCHEME, KEY_POINT_1-4, BOTTOM_LINE).`;
+
+  console.log(`    Generating infographic brief...`);
+
+  try {
+    const response = await openai.responses.create({
+      model: 'gpt-4.1',
+      instructions: INFOGRAPHIC_SYSTEM_PROMPT,
+      input: userPrompt,
+    });
+
+    const text = extractResponseText(response);
+
+    if (!text) {
+      console.log('    Infographic brief generation returned empty response');
+      return null;
+    }
+
+    const brief = parseInfographicBrief(text);
+
+    if (brief) {
+      console.log(`    Brief generated: "${brief.headline}" (${brief.style})`);
+    }
+
+    return brief;
+  } catch (error) {
+    console.error('    Infographic brief generation failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Build Gemini prompt from infographic brief
+ */
+function buildInfographicPrompt(brief: InfographicBrief): string {
+  const keyPointsText = brief.keyPoints
+    .map((kp, i) => `${i + 1}. Icon: ${kp.icon} | Label: "${kp.label}" | Text: "${kp.explanation}"`)
+    .join('\n');
+
+  return `Create a polished, professional infographic with the following content:
+
+HEADLINE (large, bold, at top): "${brief.headline}"
+SUBTITLE (smaller, below headline): "${brief.subtitle}"
+
+VISUAL STYLE: ${brief.style}
+COLOR SCHEME: ${brief.colorScheme}
+
+KEY POINTS (arrange in a clear visual hierarchy, each with its icon):
+${keyPointsText}
+
+BOTTOM LINE (highlighted box or banner at bottom): "${brief.bottomLine}"
+
+REQUIREMENTS:
+- Clean, modern design with clear visual hierarchy
+- All text must be LEGIBLE and correctly spelled
+- Each key point should have a simple icon next to it
+- Use the specified color scheme consistently
+- Professional quality suitable for a tech newsletter
+- 4K resolution, sharp details
+- DO NOT include any placeholder text - use EXACTLY the text provided above
+- The headline "${brief.headline}" must appear prominently at the top`;
+}
+
+/**
+ * Generate infographic image using Gemini
+ */
+async function generateInfographicImage(brief: InfographicBrief): Promise<{ image: string } | { error: ImageGenerationError }> {
+  const config = getConfig();
+  const prompt = buildInfographicPrompt(brief);
+
+  if (!config.geminiApiKey) {
+    return { error: { error: 'GEMINI_API_KEY not configured for infographic generation', prompt } };
+  }
+
+  console.log(`    Generating infographic with Gemini...`);
+
+  let lastError = '';
+
+  for (let attempt = 1; attempt <= IMAGE_GEN_MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 1) {
+        console.log(`    Retry attempt ${attempt}/${IMAGE_GEN_MAX_RETRIES}...`);
+      }
+
+      const result = await generateImageWithGemini(prompt);
+
+      if ('error' in result) {
+        lastError = result.error;
+        console.log(`    Infographic generation returned error: ${lastError}`);
+        await sleep(IMAGE_GEN_RETRY_DELAY);
+        continue;
+      }
+
+      console.log(`    Infographic generated successfully`);
+      return { image: result.image };
+    } catch (err: any) {
+      lastError = err?.error?.message || err?.message || String(err);
+      console.error(`    Infographic generation attempt ${attempt} failed:`, lastError);
+
+      if (attempt < IMAGE_GEN_MAX_RETRIES) {
+        await sleep(IMAGE_GEN_RETRY_DELAY);
+      }
+    }
+  }
+
+  console.error(`    Infographic generation failed after ${IMAGE_GEN_MAX_RETRIES} attempts`);
+  return { error: { error: lastError, prompt } };
+}
+
+export interface InfographicResult {
+  success: true;
+  image: string;  // base64-encoded image
+  headline: string;
+  bottomLine: string;
+}
+
+export interface InfographicError {
+  success: false;
+  error: string;
+  prompt?: string;
+}
+
+/**
+ * Generate an infographic using 2-step pipeline:
+ * 1. LLM generates structured brief (key points, style, colors)
+ * 2. Gemini Nano Banana Pro renders the infographic
+ *
+ * Returns image + headline on success, or error details on failure
+ */
+export async function generateArticleInfographic(
+  articleTitle: string,
+  articleContent: string,
+  contentType: ContentType
+): Promise<InfographicResult | InfographicError> {
+  return traced(
+    async (span) => {
+      // Step 1: Generate brief
+      const brief = await generateInfographicBrief(articleTitle, articleContent, contentType);
+
+      if (!brief) {
+        console.log('    Infographic generation failed at brief step');
+        span.log({ output: { error: 'Failed to generate infographic brief' } });
+        return { success: false, error: 'Failed to generate infographic brief' };
+      }
+
+      // Step 2: Generate image from brief
+      const result = await generateInfographicImage(brief);
+
+      if ('error' in result) {
+        span.log({
+          output: { error: result.error.error },
+          metadata: { prompt: result.error.prompt },
+        });
+        return {
+          success: false,
+          error: result.error.error,
+          prompt: result.error.prompt,
+        };
+      }
+
+      // Log success with image attachment for Braintrust UI rendering
+      const imageBuffer = Buffer.from(result.image, 'base64');
+      span.log({
+        output: {
+          image: new Attachment({
+            data: imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength),
+            filename: 'infographic.png',
+            contentType: 'image/png',
+          }),
+          headline: brief.headline,
+          bottomLine: brief.bottomLine,
+        },
+        metadata: {
+          style: brief.style,
+          colorScheme: brief.colorScheme,
+          keyPointCount: brief.keyPoints.length,
+        },
+      });
+
+      return {
+        success: true,
+        image: result.image,
+        headline: brief.headline,
+        bottomLine: brief.bottomLine,
+      };
+    },
+    {
+      name: 'generateArticleInfographic',
+      event: { input: { articleTitle, articleContent: articleContent.slice(0, 500), contentType } },
+    }
+  );
 }

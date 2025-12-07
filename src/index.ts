@@ -8,7 +8,7 @@ import { fetchArticleUrls, fetchArticleContent } from './scraper';
 import { generateSummaries } from './summarizer';
 import { runAgenticResearch } from './researcher';
 import { postArticleThread, sendMessage, postImageReply, postCartoonError, postThreadMessage, deleteMessage, updateMessage } from './slack';
-import { generateArticleCartoon, extractHaiku } from './image-generator';
+import { generateArticleCartoon, generateArticleInfographic, extractHaiku } from './image-generator';
 
 const DELAY_BETWEEN_ARTICLES = 5000; // 5 seconds
 
@@ -17,7 +17,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Generate and post a 4-panel cartoon for the article
+ * Generate and post a 4-panel cartoon for the article (OpenAI)
  */
 async function generateAndPostCartoon(
   haiku: string,
@@ -63,6 +63,63 @@ async function generateAndPostCartoon(
   } else {
     // Post error notification to thread
     await postCartoonError(result.error, result.prompt, threadTs, channelId);
+  }
+}
+
+/**
+ * Generate and post an infographic for the article (Gemini Nano Banana Pro)
+ */
+async function generateAndPostInfographic(
+  articleTitle: string,
+  articleContent: string,
+  contentType: ContentType,
+  threadTs: string,
+  channelId?: string
+): Promise<void> {
+  const config = getConfig();
+
+  // Skip if Gemini not configured
+  if (!config.geminiApiKey) {
+    console.log('    Skipping infographic (GEMINI_API_KEY not set)');
+    return;
+  }
+
+  // Post progress message with animated dots
+  const progressTs = await postThreadMessage(':art: Creating infographic.', threadTs, channelId);
+
+  let animationStopped = false;
+  let dotCount = 1;
+  let animationTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  const animateDots = () => {
+    if (animationStopped || !progressTs) return;
+    dotCount = (dotCount % 3) + 1;
+    const dots = '.'.repeat(dotCount);
+    updateMessage(progressTs, `:art: Creating infographic${dots}`, channelId).finally(() => {
+      if (!animationStopped) {
+        animationTimeout = setTimeout(animateDots, 2000);
+      }
+    });
+  };
+
+  // Start animation after 2s
+  animationTimeout = setTimeout(animateDots, 2000);
+
+  const result = await generateArticleInfographic(articleTitle, articleContent, contentType);
+
+  // Stop animation and delete progress message
+  animationStopped = true;
+  if (animationTimeout) clearTimeout(animationTimeout);
+  if (progressTs) {
+    await deleteMessage(progressTs, channelId);
+  }
+
+  if (result.success) {
+    const caption = `📊 *${result.headline}*\n_${result.bottomLine}_`;
+    await postImageReply(result.image, threadTs, channelId, caption);
+  } else {
+    // Log error but don't post to thread (infographic is supplementary)
+    console.error(`    Infographic generation failed: ${result.error}`);
   }
 }
 
@@ -160,17 +217,26 @@ async function processSource(source: Source, state: State): Promise<State> {
       );
 
       if (threadTs) {
-        // Generate and post 4-panel cartoon if enabled
+        // Generate and post images if enabled
         const config = getConfig();
         if (config.imageGenEnabled) {
           const haiku = extractHaiku(summaries.mainSummary);
-          await generateAndPostCartoon(
-            haiku,
-            article.title,
-            article.content,
-            source.contentType,
-            threadTs
-          );
+          // Generate both in parallel: comic (OpenAI) + infographic (Gemini)
+          await Promise.all([
+            generateAndPostCartoon(
+              haiku,
+              article.title,
+              article.content,
+              source.contentType,
+              threadTs
+            ),
+            generateAndPostInfographic(
+              article.title,
+              article.content,
+              source.contentType,
+              threadTs
+            ),
+          ]);
         }
 
         // Mark as seen ONLY after successful Slack post
@@ -266,17 +332,27 @@ export async function processManualUrl(
       // Signal that main article is posted (stops "Thinking..." animation)
       onArticlePosted?.();
 
-      // Generate and post 4-panel cartoon if enabled
+      // Generate and post images if enabled
       if (config.imageGenEnabled) {
         const haiku = extractHaiku(summaries.mainSummary);
-        await generateAndPostCartoon(
-          haiku,
-          article.title,
-          article.content,
-          contentType,
-          threadTs,
-          channelId
-        );
+        // Generate both in parallel: comic (OpenAI) + infographic (Gemini)
+        await Promise.all([
+          generateAndPostCartoon(
+            haiku,
+            article.title,
+            article.content,
+            contentType,
+            threadTs,
+            channelId
+          ),
+          generateAndPostInfographic(
+            article.title,
+            article.content,
+            contentType,
+            threadTs,
+            channelId
+          ),
+        ]);
       }
 
       // Only mark as seen for primary channel

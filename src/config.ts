@@ -20,6 +20,10 @@ export interface Config {
 
   // Image generation: true to generate 4-panel cartoons for articles
   imageGenEnabled: boolean;
+
+  // Image provider: 'openai' (gpt-image-1) or 'gemini' (gemini-3-pro-image-preview)
+  imageProvider: 'openai' | 'gemini';
+  geminiApiKey: string;
 }
 
 function requireEnv(name: string): string {
@@ -45,6 +49,8 @@ export function loadConfig(): Config {
     port: parseInt(optionalEnv('PORT', '3000'), 10),
     stateFilePath: optionalEnv('STATE_FILE_PATH', './seen_articles.json'),
     imageGenEnabled: optionalEnv('IMAGE_GEN_ENABLED', 'false') === 'true',
+    imageProvider: (optionalEnv('IMAGE_PROVIDER', 'openai') as 'openai' | 'gemini'),
+    geminiApiKey: optionalEnv('GEMINI_API_KEY', ''),
   };
 }
 
